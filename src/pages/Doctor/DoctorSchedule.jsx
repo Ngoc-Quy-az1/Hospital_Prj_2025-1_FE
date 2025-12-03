@@ -1,37 +1,33 @@
-import React, { useState } from 'react'
-import { useAuth, useHospital } from '../../contexts/HospitalContext'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
+import { doctorAPI } from '../../services/api'
 import Card from '../../components/Common/Card'
 import Button from '../../components/Common/Button'
-import { Calendar, Clock, User, Stethoscope, Plus } from 'lucide-react'
+import Modal from '../../components/Common/Modal'
+import Pagination from '../../components/Common/Pagination'
+import { Calendar, Clock, User, CheckCircle, XCircle } from 'lucide-react'
 
 const DoctorSchedule = () => {
   const { user } = useAuth()
-  const { appointments, patients, updateAppointment } = useHospital()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-  const [showAddModal, setShowAddModal] = useState(false)
-
-  // Lọc lịch hẹn theo bác sĩ và ngày
-  const doctorAppointments = appointments.filter(appointment => 
-    appointment.doctorId === user?.id && appointment.date === selectedDate
-  )
-
-  // Sắp xếp theo giờ
-  const sortedAppointments = doctorAppointments.sort((a, b) => a.time.localeCompare(b.time))
-
-  const getPatientName = (patientId) => {
-    const patient = patients.find(p => p.id === patientId)
-    return patient ? patient.name : 'Không xác định'
-  }
+  const [showAppointmentDetail, setShowAppointmentDetail] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [appointments, setAppointments] = useState([])
+  const [appointmentStats, setAppointmentStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [pageInfo, setPageInfo] = useState({ page: 0, size: 20, totalElements: 0, totalPages: 0 })
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      scheduled: { color: 'bg-blue-100 text-blue-800', label: 'Đã đặt lịch' },
-      confirmed: { color: 'bg-green-100 text-green-800', label: 'Đã xác nhận' },
-      completed: { color: 'bg-gray-100 text-gray-800', label: 'Hoàn thành' },
-      cancelled: { color: 'bg-red-100 text-red-800', label: 'Đã hủy' }
+      'scheduled': { color: 'bg-blue-100 text-blue-800', label: 'Đã đặt lịch' },
+      'confirmed': { color: 'bg-green-100 text-green-800', label: 'Đã xác nhận' },
+      'completed': { color: 'bg-gray-100 text-gray-800', label: 'Hoàn thành' },
+      'cancelled': { color: 'bg-red-100 text-red-800', label: 'Đã hủy' },
+      'pending': { color: 'bg-yellow-100 text-yellow-800', label: 'Chờ duyệt' }
     }
     
-    const config = statusConfig[status] || statusConfig.scheduled
+    const config = statusConfig[status] || statusConfig['scheduled']
     
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
@@ -40,61 +36,176 @@ const DoctorSchedule = () => {
     )
   }
 
-  const handleStatusChange = (appointmentId, newStatus) => {
-    updateAppointment(appointmentId, { status: newStatus })
+  const mapAppointment = (apt) => ({
+    id: apt.datLichKhamId || apt.id,
+    patientName: apt.benhnhan?.hoTen || apt.benhnhan?.name || 'Không xác định',
+    patientId: apt.benhnhan?.benhnhanId || apt.benhnhan?.id,
+    date: apt.ngayHen || apt.date || apt.ngayKham,
+    time: apt.gioHen || apt.time || '08:00',
+    status: apt.status || apt.trangThai,
+    notes: apt.lyDoKham || apt.notes || '',
+    phone: apt.benhnhan?.sdt || apt.benhnhan?.phone || '',
+    email: apt.benhnhan?.email || '',
+    address: apt.benhnhan?.diaChi || apt.benhnhan?.address || ''
+  })
+
+  const reloadAppointments = useCallback(async (page = 0, size = 20) => {
+    const params = {
+      date: selectedDate,
+      size: size,
+      page: page,
+    }
+    const response = await doctorAPI.getAppointments(params)
+    const fetched = response.content || response.data || []
+    const formatted = fetched.map(mapAppointment)
+    setAppointments(formatted)
+    setPageInfo({
+      page: response.number ?? page,
+      size: response.size ?? size,
+      totalElements: response.totalElements ?? 0,
+      totalPages: response.totalPages ?? 0
+    })
+  }, [selectedDate])
+
+  const handleApproveAppointment = async (appointmentId) => {
+    try {
+      await doctorAPI.approveAppointment(appointmentId)
+      await reloadAppointments()
+    } catch (err) {
+      console.error('Lỗi khi duyệt lịch hẹn:', err)
+    }
   }
 
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
-    '16:00', '16:30', '17:00', '17:30'
-  ]
+  const handleRejectAppointment = async (appointmentId) => {
+    try {
+      await doctorAPI.rejectAppointment(appointmentId, 'Từ chối')
+      await reloadAppointments()
+    } catch (err) {
+      console.error('Lỗi khi từ chối lịch hẹn:', err)
+    }
+  }
 
-  const getAppointmentByTime = (time) => {
-    return doctorAppointments.find(apt => apt.time === time)
+  const handleCompleteAppointment = async (appointmentId) => {
+    try {
+      await doctorAPI.completeAppointment(appointmentId)
+      await reloadAppointments()
+    } catch (err) {
+      console.error('Lỗi khi hoàn thành lịch hẹn:', err)
+    }
+  }
+
+  const handleViewAppointment = (appointment) => {
+    setSelectedAppointment(appointment)
+    setShowAppointmentDetail(true)
+  }
+
+  // Load lịch hẹn và thống kê từ API
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([
+          reloadAppointments(0, pageInfo.size),
+          loadAppointmentStats()
+        ])
+        setError(null)
+      } catch (err) {
+        console.error('Lỗi khi tải dữ liệu:', err)
+        setError('Không thể tải lịch hẹn')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadData()
+  }, [selectedDate])
+
+  // Reload appointments khi date thay đổi
+  useEffect(() => {
+    if (!loading) {
+      reloadAppointments(0, pageInfo.size)
+    }
+  }, [selectedDate])
+
+  // Reload stats when date changes
+  useEffect(() => {
+    if (!loading) {
+      loadAppointmentStats()
+    }
+  }, [selectedDate])
+
+  const loadAppointmentStats = async () => {
+    try {
+      const stats = await doctorAPI.getAppointmentStats(selectedDate)
+      setAppointmentStats(stats)
+    } catch (err) {
+      console.error('Lỗi khi tải thống kê lịch hẹn:', err)
+    }
+  }
+
+  // Lọc lịch hẹn theo ngày
+  const appointmentsForDate = (appointments || []).filter(apt => {
+    const aptDate = apt.date ? apt.date.split('T')[0] : ''
+    return aptDate === selectedDate
+  })
+
+  // Lọc theo trạng thái
+  const scheduledAppointments = appointmentsForDate.filter(a => a.status === 'scheduled')
+  const confirmedAppointments = appointmentsForDate.filter(a => a.status === 'confirmed')
+  const completedAppointments = appointmentsForDate.filter(a => a.status === 'completed')
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Lịch làm việc</h1>
           <p className="text-gray-600 mt-1">Quản lý lịch khám bệnh của bạn</p>
         </div>
-        <Button
-          icon={<Plus className="w-4 h-4" />}
-          onClick={() => setShowAddModal(true)}
-        >
-          Thêm lịch hẹn
-        </Button>
       </div>
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="text-center">
           <div className="text-3xl font-bold text-blue-600">
-            {doctorAppointments.length}
+            {appointmentStats?.totalAppointments ?? appointmentsForDate.length}
           </div>
           <div className="text-gray-600">Tổng lịch hôm nay</div>
         </Card>
         <Card className="text-center">
           <div className="text-3xl font-bold text-green-600">
-            {doctorAppointments.filter(a => a.status === 'confirmed').length}
+            {appointmentStats?.confirmedAppointments ?? confirmedAppointments.length}
           </div>
           <div className="text-gray-600">Đã xác nhận</div>
         </Card>
         <Card className="text-center">
           <div className="text-3xl font-bold text-gray-600">
-            {doctorAppointments.filter(a => a.status === 'completed').length}
+            {appointmentStats?.completedAppointments ?? completedAppointments.length}
           </div>
           <div className="text-gray-600">Hoàn thành</div>
         </Card>
         <Card className="text-center">
-          <div className="text-3xl font-bold text-red-600">
-            {doctorAppointments.filter(a => a.status === 'cancelled').length}
+          <div className="text-3xl font-bold text-yellow-600">
+            {appointmentStats?.pendingAppointments ?? scheduledAppointments.length}
           </div>
-          <div className="text-gray-600">Đã hủy</div>
+          <div className="text-gray-600">Chờ xác nhận</div>
         </Card>
       </div>
 
@@ -120,172 +231,147 @@ const DoctorSchedule = () => {
         </div>
       </Card>
 
-      {/* Schedule Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Time Slots */}
-        <Card title="Lịch theo giờ">
-          <div className="space-y-2">
-            {timeSlots.map(time => {
-              const appointment = getAppointmentByTime(time)
-              return (
-                <div key={time} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg">
-                  <div className="flex items-center gap-2 w-16">
-                    <Clock className="w-4 h-4 text-gray-400" />
-                    <span className="font-medium text-sm">{time}</span>
-                  </div>
-                  
-                  {appointment ? (
-                    <div className="flex-1">
+      {/* Appointments List */}
+      <Card title="Danh sách lịch hẹn">
+        {appointments.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            Không có lịch hẹn nào cho ngày này
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {appointmentsForDate.map(appointment => (
+              <div
+                key={appointment.id}
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <span className="font-medium">{appointment.time}</span>
+                    </div>
+                    <div>
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">{getPatientName(appointment.patientId)}</span>
+                        <span className="font-medium">{appointment.patientName}</span>
                         {getStatusBadge(appointment.status)}
                       </div>
                       <div className="text-sm text-gray-600 mt-1">
-                        {appointment.type} - {appointment.notes}
+                        {appointment.notes}
                       </div>
-                      <div className="flex gap-2 mt-2">
-                        {appointment.status === 'scheduled' && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="success"
-                              onClick={() => handleStatusChange(appointment.id, 'confirmed')}
-                            >
-                              Xác nhận
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => handleStatusChange(appointment.id, 'cancelled')}
-                            >
-                              Hủy
-                            </Button>
-                          </>
-                        )}
-                        {appointment.status === 'confirmed' && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleStatusChange(appointment.id, 'completed')}
-                          >
-                            Hoàn thành
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex-1 text-gray-400 italic">
-                      Trống
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </Card>
-
-        {/* Today's Appointments List */}
-        <Card title="Danh sách lịch hẹn">
-          {sortedAppointments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Không có lịch hẹn nào cho ngày này</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sortedAppointments.map(appointment => (
-                <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">{getPatientName(appointment.patientId)}</span>
-                        <span className="text-sm text-gray-500">
-                          {appointment.time}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600 mb-2">
-                        <div>Loại: {appointment.type}</div>
-                        {appointment.notes && (
-                          <div>Ghi chú: {appointment.notes}</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      {getStatusBadge(appointment.status)}
+                      {appointment.phone && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          📞 {appointment.phone}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex gap-2 mt-3">
+
+                  <div className="flex gap-2">
                     {appointment.status === 'scheduled' && (
                       <>
                         <Button
                           size="sm"
                           variant="success"
-                          onClick={() => handleStatusChange(appointment.id, 'confirmed')}
+                          icon={<CheckCircle className="w-4 h-4" />}
+                          onClick={() => handleApproveAppointment(appointment.id)}
                         >
-                          Xác nhận
+                          Duyệt
                         </Button>
                         <Button
                           size="sm"
                           variant="danger"
-                          onClick={() => handleStatusChange(appointment.id, 'cancelled')}
+                          icon={<XCircle className="w-4 h-4" />}
+                          onClick={() => handleRejectAppointment(appointment.id)}
                         >
-                          Hủy
+                          Từ chối
                         </Button>
                       </>
                     )}
                     {appointment.status === 'confirmed' && (
                       <Button
                         size="sm"
-                        onClick={() => handleStatusChange(appointment.id, 'completed')}
+                        variant="outline"
+                        onClick={() => handleCompleteAppointment(appointment.id)}
                       >
                         Hoàn thành
                       </Button>
                     )}
-                    {appointment.status === 'completed' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => window.open(`/dashboard/doctor/medical-records?patient=${appointment.patientId}`, '_blank')}
-                      >
-                        Xem hồ sơ
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewAppointment(appointment)}
+                    >
+                      Chi tiết
+                    </Button>
                   </div>
                 </div>
+              </div>
               ))}
             </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <Card title="Thao tác nhanh">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Button
-            variant="outline"
-            icon={<User className="w-4 h-4" />}
-            onClick={() => window.location.href = '/dashboard/doctor/patients'}
-          >
-            Xem bệnh nhân
-          </Button>
-          <Button
-            variant="outline"
-            icon={<Stethoscope className="w-4 h-4" />}
-            onClick={() => window.location.href = '/dashboard/doctor/medical-records'}
-          >
-            Hồ sơ bệnh án
-          </Button>
-          <Button
-            variant="outline"
-            icon={<Calendar className="w-4 h-4" />}
-            onClick={() => setShowAddModal(true)}
-          >
-            Đặt lịch mới
-          </Button>
-        </div>
+            <Pagination
+              currentPage={pageInfo.page}
+              totalPages={pageInfo.totalPages}
+              totalElements={pageInfo.totalElements}
+              pageSize={pageInfo.size}
+              onPageChange={(page) => reloadAppointments(page, pageInfo.size)}
+              onPageSizeChange={(size) => reloadAppointments(0, size)}
+            />
+          </>
+        )}
       </Card>
+
+      {/* Appointment Detail Modal */}
+      <Modal
+        isOpen={showAppointmentDetail}
+        onClose={() => {
+          setShowAppointmentDetail(false)
+          setSelectedAppointment(null)
+        }}
+        title="Chi tiết lịch hẹn"
+      >
+        {selectedAppointment && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Bệnh nhân:</label>
+              <div className="mt-1 text-gray-900">{selectedAppointment.patientName}</div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Thời gian:</label>
+              <div className="mt-1 text-gray-900">
+                {selectedAppointment.date && new Date(selectedAppointment.date).toLocaleDateString('vi-VN')} lúc {selectedAppointment.time}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Lý do khám:</label>
+              <div className="mt-1 text-gray-900">{selectedAppointment.notes}</div>
+            </div>
+            {selectedAppointment.phone && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Số điện thoại:</label>
+                <div className="mt-1 text-gray-900">{selectedAppointment.phone}</div>
+              </div>
+            )}
+            {selectedAppointment.email && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Email:</label>
+                <div className="mt-1 text-gray-900">{selectedAppointment.email}</div>
+              </div>
+            )}
+            {selectedAppointment.address && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Địa chỉ:</label>
+                <div className="mt-1 text-gray-900">{selectedAppointment.address}</div>
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
+              <div className="mt-1">{getStatusBadge(selectedAppointment.status)}</div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
