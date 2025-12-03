@@ -9,7 +9,7 @@ const Card = ({
   padding = 'p-6'
 }) => {
   return (
-    <div className={`bg-white rounded-lg shadow border border-gray-200 ${className}`}>
+    <div className={`bg-white rounded-lg shadow border border-gray-200 ${className}`} style={{ overflow: 'visible' }}>
       {(title || headerActions) && (
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -29,7 +29,7 @@ const Card = ({
           </div>
         </div>
       )}
-      <div className={padding}>
+      <div className={padding} style={{ overflow: 'visible' }}>
         {children}
       </div>
     </div>

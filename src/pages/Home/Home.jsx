@@ -9,7 +9,13 @@ import {
   Shield,
   ArrowRight,
   CheckCircle,
-  Star
+  Star,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
+  Award,
+  TrendingUp
 } from 'lucide-react'
 
 const Home = () => {
@@ -98,28 +104,61 @@ const Home = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-5xl font-bold text-gray-900 mb-6">
+      <section className="relative py-20 overflow-hidden">
+        {/* Background gradient đơn giản, bỏ ảnh ngoài để tránh lỗi hiển thị */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-blue-700/90"></div>
+        
+        {/* Floating Elements */}
+        <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-blue-400/20 rounded-full animate-bounce"></div>
+        <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-white/10 rounded-full animate-ping"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-6">
+              <Award className="w-4 h-4" />
+              Bệnh viện đạt chuẩn quốc tế JCI
+            </div>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
               Hệ thống quản lý bệnh viện
-              <span className="text-blue-600 block">hiện đại và hiệu quả</span>
+              <span className="text-blue-300 block">thông minh & hiện đại</span>
             </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Nền tảng toàn diện giúp quản lý bác sĩ, y tá, bệnh nhân và lịch hẹn một cách chuyên nghiệp. 
-              Tối ưu hóa quy trình làm việc và nâng cao chất lượng dịch vụ y tế.
+            <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-4xl mx-auto leading-relaxed">
+              Nền tảng công nghệ tiên tiến giúp quản lý toàn diện bác sĩ, y tá, bệnh nhân và lịch hẹn. 
+              Nâng cao chất lượng dịch vụ y tế với trải nghiệm số hóa chuyên nghiệp.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Link
                 to="/login"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-blue-600 text-lg font-semibold rounded-lg hover:bg-blue-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
-                Bắt đầu ngay
+                Đăng nhập hệ thống
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <button className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-700 text-lg font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
-                Xem demo
+              <button className="inline-flex items-center gap-2 px-8 py-4 bg-transparent text-white text-lg font-semibold rounded-lg border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-300 transform hover:scale-105">
+                <Phone className="w-5 h-5" />
+                Liên hệ tư vấn
               </button>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                <div className="text-3xl font-bold mb-2">50+</div>
+                <div className="text-sm text-blue-200">Bác sĩ chuyên khoa</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                <div className="text-3xl font-bold mb-2">24/7</div>
+                <div className="text-sm text-blue-200">Dịch vụ khẩn cấp</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                <div className="text-3xl font-bold mb-2">1000+</div>
+                <div className="text-sm text-blue-200">Bệnh nhân hài lòng</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                <div className="text-3xl font-bold mb-2">15+</div>
+                <div className="text-sm text-blue-200">Năm kinh nghiệm</div>
+              </div>
             </div>
           </div>
         </div>
@@ -146,9 +185,13 @@ const Home = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20">
+      <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-6">
+              <TrendingUp className="w-4 h-4" />
+              Công nghệ tiên tiến
+            </div>
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
               Tính năng nổi bật
             </h2>
@@ -161,129 +204,16 @@ const Home = () => {
             {features.map((feature, index) => {
               const Icon = feature.icon
               return (
-                <div key={index} className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
-                  <div className={`inline-flex items-center justify-center w-16 h-16 ${feature.color} rounded-lg mb-6`}>
+                <div key={index} className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+                  <div className={`inline-flex items-center justify-center w-16 h-16 ${feature.color} rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300`}>
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
+                  <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                 </div>
               )
             })}
           </div>
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                Tại sao chọn hệ thống của chúng tôi?
-              </h2>
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Quản lý tập trung</h3>
-                    <p className="text-gray-600">Tất cả thông tin được quản lý tập trung, dễ dàng truy cập và cập nhật</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Bảo mật cao</h3>
-                    <p className="text-gray-600">Dữ liệu được mã hóa và bảo vệ theo tiêu chuẩn y tế quốc tế</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Giao diện thân thiện</h3>
-                    <p className="text-gray-600">Thiết kế hiện đại, dễ sử dụng cho mọi đối tượng người dùng</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <CheckCircle className="w-6 h-6 text-green-500 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Hỗ trợ 24/7</h3>
-                    <p className="text-gray-600">Đội ngũ hỗ trợ kỹ thuật sẵn sàng giúp đỡ mọi lúc</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-8 text-white">
-                <h3 className="text-2xl font-bold mb-4">Thống kê hiệu quả</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Tiết kiệm thời gian</span>
-                    <span className="text-2xl font-bold">80%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Tăng hiệu suất</span>
-                    <span className="text-2xl font-bold">65%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Hài lòng khách hàng</span>
-                    <span className="text-2xl font-bold">95%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Khách hàng nói gì về chúng tôi
-            </h2>
-            <p className="text-xl text-gray-600">
-              Những phản hồi tích cực từ người dùng hệ thống
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white p-8 rounded-xl shadow-lg">
-                <div className="flex items-center mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-6 italic">"{testimonial.content}"</p>
-                <div>
-                  <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                  <div className="text-sm text-gray-500">{testimonial.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-blue-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">
-            Sẵn sàng bắt đầu?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Tham gia cùng hàng ngàn bệnh viện đã tin tưởng sử dụng hệ thống của chúng tôi
-          </p>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-blue-600 text-lg font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Đăng nhập ngay
-            <ArrowRight className="w-5 h-5" />
-          </Link>
         </div>
       </section>
 

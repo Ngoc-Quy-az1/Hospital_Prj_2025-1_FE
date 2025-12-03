@@ -18,7 +18,9 @@ import {
   ClipboardList,
   BarChart3,
   Shield,
-  UserCog
+  UserCog,
+  Pill,
+  Clock
 } from 'lucide-react'
 
 const Sidebar = ({ isCollapsed, onToggle }) => {
@@ -27,53 +29,64 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
   // Menu items theo role
   const getMenuItems = () => {
     const commonItems = [
-      { path: '/dashboard', label: 'Trang chủ', icon: LayoutDashboard },
-      { path: '/profile', label: 'Thông tin cá nhân', icon: User }
+      { path: '/dashboard', label: 'Trang chủ', icon: LayoutDashboard }
     ]
 
     switch (user?.role) {
       case 'admin':
         return [
           ...commonItems,
-          { path: '/admin/users', label: 'Quản lý người dùng', icon: Users },
-          { path: '/admin/doctors', label: 'Quản lý bác sĩ', icon: Stethoscope },
-          { path: '/admin/nurses', label: 'Quản lý y tá', icon: UserCheck },
-          { path: '/admin/patients', label: 'Quản lý bệnh nhân', icon: Heart },
-          { path: '/admin/departments', label: 'Quản lý khoa', icon: Building },
-          { path: '/admin/rooms', label: 'Quản lý phòng', icon: Building },
-          { path: '/admin/appointments', label: 'Quản lý lịch hẹn', icon: Calendar },
-          { path: '/admin/reports', label: 'Báo cáo thống kê', icon: BarChart3 },
-          { path: '/admin/settings', label: 'Cài đặt hệ thống', icon: Settings }
+          { path: '/dashboard/admin/staff', label: 'Quản lý nhân sự', icon: Users },
+          { path: '/dashboard/admin/schedule', label: 'Quản lý lịch trực', icon: Calendar },
+          { path: '/dashboard/admin/patients', label: 'Quản lý bệnh nhân', icon: Heart },
+          { path: '/dashboard/admin/medical-records', label: 'Hồ sơ khám bệnh', icon: FileText },
+          { path: '/dashboard/admin/medicine', label: 'Quản lý thuốc', icon: ClipboardList },
+          { path: '/dashboard/admin/prescriptions', label: 'Quản lý đơn thuốc', icon: FileText },
+          { path: '/dashboard/admin/lab-tests', label: 'Quản lý xét nghiệm', icon: Activity },
+          { path: '/dashboard/admin/financial', label: 'Quản lý viện phí', icon: BarChart3 },
+          { path: '/dashboard/admin/rooms', label: 'Quản lý phòng bệnh', icon: Building },
+          { path: '/dashboard/admin/users', label: 'Quản lý tài khoản', icon: UserCog },
+          { path: '/dashboard/admin/reports', label: 'Báo cáo thống kê', icon: BarChart3 },
+          { path: '/dashboard/admin/feedback', label: 'Phản hồi & hỗ trợ', icon: Users }
         ]
 
       case 'doctor':
         return [
-          ...commonItems,
-          { path: '/doctor/schedule', label: 'Lịch làm việc', icon: Calendar },
-          { path: '/doctor/patients', label: 'Bệnh nhân', icon: Heart },
-          { path: '/doctor/appointments', label: 'Lịch hẹn', icon: ClipboardList },
-          { path: '/doctor/medical-records', label: 'Hồ sơ bệnh án', icon: FileText },
-          { path: '/doctor/prescriptions', label: 'Đơn thuốc', icon: FileText }
-        ]
-
-      case 'nurse':
-        return [
-          ...commonItems,
-          { path: '/nurse/schedule', label: 'Lịch làm việc', icon: Calendar },
-          { path: '/nurse/patients', label: 'Chăm sóc bệnh nhân', icon: Heart },
-          { path: '/nurse/vital-signs', label: 'Dấu hiệu sinh tồn', icon: Activity },
-          { path: '/nurse/medications', label: 'Quản lý thuốc', icon: FileText },
-          { path: '/nurse/rooms', label: 'Quản lý phòng', icon: Building }
+          { path: '/dashboard/doctor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { path: '/dashboard/doctor/profile', label: 'Hồ sơ bác sĩ', icon: User },
+          { path: '/dashboard/doctor/schedule', label: 'Lịch hẹn', icon: Calendar },
+          { path: '/dashboard/doctor/work-schedule', label: 'Lịch trực', icon: Clock },
+          { path: '/dashboard/doctor/patients', label: 'Bệnh nhân', icon: Heart },
+          { path: '/dashboard/doctor/prescriptions', label: 'Đơn thuốc', icon: FileText },
+          { path: '/dashboard/doctor/lab-tests', label: 'Xét nghiệm', icon: Activity },
+          { path: '/dashboard/doctor/surgeries', label: 'Phẫu thuật', icon: ClipboardList },
+          { path: '/dashboard/doctor/bills', label: 'Hóa đơn', icon: FileText }
         ]
 
       case 'patient':
         return [
+          // Bệnh nhân: dùng luôn Dashboard riêng, bỏ trang chủ chung
+          { path: '/dashboard/patient/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { path: '/dashboard/patient/appointments', label: 'Lịch hẹn của tôi', icon: Calendar },
+          { path: '/dashboard/patient/medical-history', label: 'Lịch sử khám bệnh', icon: FileText },
+          { path: '/dashboard/patient/prescriptions', label: 'Đơn thuốc', icon: FileText },
+          { path: '/dashboard/patient/book-appointment', label: 'Đặt lịch khám', icon: UserPlus },
+          { path: '/dashboard/patient/billing', label: 'Hóa đơn', icon: FileText }
+        ]
+
+      case 'accounting':
+        return [
+          { path: '/dashboard/accounting/bills', label: 'Trang chủ', icon: LayoutDashboard },
+          { path: '/dashboard/accounting/reports', label: 'Báo cáo tài chính', icon: BarChart3 },
+        ]
+
+      case 'pharmacy':
+        return [
           ...commonItems,
-          { path: '/patient/appointments', label: 'Lịch hẹn của tôi', icon: Calendar },
-          { path: '/patient/medical-history', label: 'Lịch sử khám bệnh', icon: FileText },
-          { path: '/patient/prescriptions', label: 'Đơn thuốc', icon: FileText },
-          { path: '/patient/book-appointment', label: 'Đặt lịch khám', icon: UserPlus },
-          { path: '/patient/billing', label: 'Hóa đơn', icon: FileText }
+          { path: '/dashboard/pharmacy/dashboard', label: 'Dashboard dược phẩm', icon: LayoutDashboard },
+          { path: '/dashboard/pharmacy/prescriptions', label: 'Quản lý đơn thuốc', icon: FileText },
+          { path: '/dashboard/pharmacy/inventory', label: 'Quản lý kho thuốc', icon: Pill },
+          { path: '/dashboard/pharmacy/reports', label: 'Báo cáo dược phẩm', icon: BarChart3 }
         ]
 
       default:
@@ -86,7 +99,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
   return (
     <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${
       isCollapsed ? 'w-16' : 'w-64'
-    }`}>
+    } flex-shrink-0`}>
       <div className="p-4">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
@@ -111,10 +124,10 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                   <NavLink
                     to={item.path}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group ${
+                      `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative ${
                         isActive
-                          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                          ? 'bg-blue-600 text-white shadow-md transform scale-[1.02]'
+                          : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:transform hover:scale-[1.01]'
                       }`
                     }
                   >
