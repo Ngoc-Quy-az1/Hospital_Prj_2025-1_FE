@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: hospital-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://hospital-prj-2025-1-be.onrender.com
+
