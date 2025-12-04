@@ -265,7 +265,8 @@ const ScheduleManagement = () => {
 
   const [formData, setFormData] = useState(createEmptyScheduleForm())
 
-  const shiftOptions = (shiftFrames && shiftFrames.length) ? shiftFrames : DEFAULT_SHIFT_FRAMES
+  // Use shiftFrames if available, otherwise fallback to defaults
+  const shiftOptions = (shiftFrames && shiftFrames.length > 0) ? shiftFrames : DEFAULT_SHIFT_FRAMES
 
   const filteredSchedules = selectedDepartment 
     ? schedules.filter(schedule => getScheduleDepartmentName(schedule) === selectedDepartment)
@@ -322,19 +323,68 @@ const ScheduleManagement = () => {
           response = await adminAPI.getShiftFrames()
         }
         const framesData = extractListFromResponse(response)
+        console.log('Shift frames from API:', framesData)
 
+        // Normalize and filter frames
         const normalizedFrames = framesData
-          .map(frame => ({
-            id: frame.id || frame.khunggiotrucId || frame.khungGioTrucId,
-            tenKhung: frame.tenKhung || frame.khungGioLabel || `${frame.gioBatDau || ''} - ${frame.gioKetThuc || ''}`,
-            gioBatDau: normalizeTimeString(frame.gioBatDau),
-            gioKetThuc: normalizeTimeString(frame.gioKetThuc)
-          }))
-          .filter(frame => frame.id)
+          .map(frame => {
+            const startTime = normalizeTimeString(frame.gioBatDau || frame.startTime)
+            const endTime = normalizeTimeString(frame.gioKetThuc || frame.endTime)
+            
+            // Generate name from time if not provided
+            let tenKhung = frame.tenKhung || frame.khungGioLabel
+            if (!tenKhung && startTime) {
+              // Try to create meaningful name from time
+              const hour = parseInt(startTime.split(':')[0])
+              if (hour >= 6 && hour < 12) {
+                tenKhung = 'Ca sáng'
+              } else if (hour >= 12 && hour < 18) {
+                tenKhung = 'Ca chiều'
+              } else if (hour >= 18 && hour < 22) {
+                tenKhung = 'Ca tối'
+              } else {
+                tenKhung = 'Ca đêm'
+              }
+            } else if (!tenKhung) {
+              tenKhung = 'Ca trực'
+            }
+            
+            return {
+              id: frame.id || frame.khunggiotrucId || frame.khungGioTrucId,
+              tenKhung: tenKhung,
+              gioBatDau: startTime,
+              gioKetThuc: endTime
+            }
+          })
+          .filter(frame => {
+            // Only include frames with valid start time
+            return frame.id && frame.gioBatDau && frame.gioBatDau !== '00:00' && frame.gioBatDau !== ''
+          })
+          // Remove duplicates based on start time
+          .filter((frame, index, self) => 
+            index === self.findIndex(f => f.gioBatDau === frame.gioBatDau)
+          )
+          // Sort by start time
+          .sort((a, b) => {
+            if (!a.gioBatDau || !b.gioBatDau) return 0
+            return a.gioBatDau.localeCompare(b.gioBatDau)
+          })
+          // Limit to reasonable number (max 20 frames)
+          .slice(0, 20)
 
-        setShiftFrames(normalizedFrames.length ? normalizedFrames : DEFAULT_SHIFT_FRAMES)
+        console.log('Normalized shift frames:', normalizedFrames)
+        
+        // Use API data if available, otherwise use defaults
+        if (normalizedFrames.length > 0) {
+          setShiftFrames(normalizedFrames)
+        } else {
+          console.warn('No valid shift frames from API, using defaults')
+          setShiftFrames(DEFAULT_SHIFT_FRAMES)
+        }
       } catch (error) {
         console.error('Failed to load shift frames:', error)
+        console.error('Error details:', error.response || error.message)
+        // Always fallback to defaults on error
         setShiftFrames(DEFAULT_SHIFT_FRAMES)
       }
     }
@@ -342,11 +392,11 @@ const ScheduleManagement = () => {
     fetchShiftFrames()
   }, [])
 
-  // Fetch doctors from API
+  // Fetch doctors from API (dùng API riêng cho lịch trực)
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        const response = await adminAPI.getDoctors()
+        const response = await adminAPI.getShiftDoctors()
         const doctorsData = Array.isArray(response) ? response : extractListFromResponse(response)
         setDoctors(doctorsData || [])
       } catch (error) {
@@ -932,21 +982,42 @@ const ScheduleManagement = () => {
       <Card title="Khung giờ trực ban">
         <div className="space-y-4">
           <div className="flex flex-wrap gap-3">
-            {shiftOptions.map(frame => (
-              <div
-                key={frame.id || frame.tenKhung}
-                className="border border-gray-200 rounded-lg px-4 py-3 min-w-[180px]"
-              >
-                <div className="font-medium text-gray-900">{frame.tenKhung}</div>
-                <div className="text-sm text-gray-500">
-                  {frame.gioBatDau && frame.gioKetThuc
-                    ? `${frame.gioBatDau} - ${frame.gioKetThuc}`
-                    : 'Chưa xác định thời gian'}
+            {shiftOptions.map(frame => {
+              const hasStartTime = frame.gioBatDau && frame.gioBatDau !== '' && frame.gioBatDau !== '00:00'
+              const hasEndTime = frame.gioKetThuc && frame.gioKetThuc !== '' && frame.gioKetThuc !== '00:00'
+              const timeDisplay = hasStartTime && hasEndTime
+                ? `${frame.gioBatDau} - ${frame.gioKetThuc}`
+                : hasStartTime
+                ? `Bắt đầu: ${frame.gioBatDau}`
+                : 'Chưa xác định thời gian'
+              
+              return (
+                <div
+                  key={frame.id || frame.tenKhung}
+                  className={`border rounded-lg px-4 py-3 min-w-[180px] ${
+                    hasStartTime 
+                      ? 'border-blue-200 bg-blue-50 hover:bg-blue-100 cursor-pointer' 
+                      : 'border-gray-200 bg-gray-50'
+                  } transition-colors`}
+                  onClick={() => {
+                    if (hasStartTime) {
+                      setShiftFrameCheck(prev => ({
+                        ...prev,
+                        startTime: frame.gioBatDau || '',
+                        endTime: frame.gioKetThuc || ''
+                      }))
+                    }
+                  }}
+                >
+                  <div className="font-medium text-gray-900">{frame.tenKhung || 'Ca trực'}</div>
+                  <div className={`text-sm ${hasStartTime ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {timeDisplay}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {shiftOptions.length === 0 && (
-              <p className="text-sm text-gray-500">Chưa có khung giờ nào.</p>
+              <p className="text-sm text-gray-500">Chưa có khung giờ nào. Vui lòng thêm khung giờ mới.</p>
             )}
           </div>
 

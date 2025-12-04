@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Card from '../../../components/Common/Card'
 import Button from '../../../components/Common/Button'
 import Modal from '../../../components/Common/Modal'
 import Table from '../../../components/Common/Table'
+import { adminAPI } from '../../../services/api'
 import { 
   TestTube, 
   Plus, 
@@ -29,61 +30,58 @@ const LabTests = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterDoctor, setFilterDoctor] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(0)
+  const [size] = useState(20)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
 
-  // Dữ liệu mẫu xét nghiệm
-  const [labTests, setLabTests] = useState([
-    {
-      id: 1,
-      testCode: 'XN001',
-      patientId: 1,
-      patientName: 'Nguyễn Thị An',
-      doctorId: 1,
-      doctorName: 'BS. Nguyễn Văn An',
-      requestDate: '2024-01-15',
-      testType: 'Xét nghiệm máu',
-      tests: [
-        { name: 'Công thức máu', result: 'Bình thường', unit: '', reference: 'Bình thường' },
-        { name: 'Đường huyết', result: '5.2', unit: 'mmol/L', reference: '3.9-6.1' },
-        { name: 'Cholesterol', result: '4.8', unit: 'mmol/L', reference: '<5.2' }
-      ],
-      status: 'Hoàn thành',
-      completedDate: '2024-01-15',
-      technician: 'KT. Trần Thị Bình',
-      notes: 'Kết quả bình thường'
-    },
-    {
-      id: 2,
-      testCode: 'XN002',
-      patientId: 2,
-      patientName: 'Trần Văn Bình',
-      doctorId: 2,
-      doctorName: 'BS. Phạm Thị Dung',
-      requestDate: '2024-01-16',
-      testType: 'Xét nghiệm nước tiểu',
-      tests: [
-        { name: 'Protein', result: 'Âm tính', unit: '', reference: 'Âm tính' },
-        { name: 'Glucose', result: 'Âm tính', unit: '', reference: 'Âm tính' },
-        { name: 'Leukocytes', result: 'Âm tính', unit: '', reference: 'Âm tính' }
-      ],
-      status: 'Đang xử lý',
-      completedDate: '',
-      technician: '',
-      notes: ''
+  // Dữ liệu từ API - removed hardcoded data
+  const [labTests, setLabTests] = useState([])
+
+  // Load lab tests from API
+  useEffect(() => {
+    loadLabTests()
+  }, [page, searchTerm, filterDoctor, filterStatus])
+
+  const loadLabTests = async () => {
+    setLoading(true)
+    try {
+      const response = await adminAPI.getLabTests(page, size, {
+        search: searchTerm || undefined,
+        doctorId: filterDoctor ? parseInt(filterDoctor) : undefined,
+        patientId: undefined
+      })
+      const fetchedLabTests = response.content || response.data || []
+      setLabTests(fetchedLabTests.map(formatLabTest))
+      setTotalPages(response.totalPages || 0)
+      setTotalElements(response.totalElements || 0)
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách xét nghiệm:', err)
+      setLabTests([])
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
 
-  const doctors = [
-    { id: 1, name: 'BS. Nguyễn Văn An', department: 'Khoa Tim mạch' },
-    { id: 2, name: 'BS. Phạm Thị Dung', department: 'Khoa Nội' },
-    { id: 3, name: 'BS. Vũ Thị Phương', department: 'Khoa Ngoại' }
-  ]
+  const formatLabTest = (labTest) => ({
+    id: labTest.labtestId || labTest.id,
+    testCode: labTest.testCode || `XN${String(labTest.labtestId || labTest.id).padStart(3, '0')}`,
+    patientId: labTest.patientId || labTest.benhnhan?.benhnhanId,
+    patientName: labTest.patientName || labTest.benhnhan?.hoTen,
+    doctorId: labTest.doctorId || labTest.bacsi?.bacsiId,
+    doctorName: labTest.doctorName || labTest.bacsi?.hoTen,
+    requestDate: labTest.requestDate || labTest.ngayTest,
+    testType: labTest.testType || labTest.loaiXetNghiem,
+    tests: labTest.tests || [],
+    status: labTest.status || null,
+    completedDate: labTest.completedDate || null,
+    technician: labTest.technician || null,
+    notes: labTest.notes || null
+  })
 
-  const technicians = [
-    { id: 1, name: 'KT. Trần Thị Bình', department: 'Khoa Xét nghiệm' },
-    { id: 2, name: 'KT. Lê Văn Cường', department: 'Khoa Xét nghiệm' },
-    { id: 3, name: 'KT. Nguyễn Thị Dung', department: 'Khoa Xét nghiệm' }
-  ]
-
+  const doctors = []
+  const technicians = []
   const testTypes = [
     'Xét nghiệm máu', 'Xét nghiệm nước tiểu', 'Xét nghiệm phân',
     'Siêu âm', 'X-quang', 'CT Scan', 'MRI', 'Điện tâm đồ'
@@ -104,18 +102,8 @@ const LabTests = () => {
     notes: ''
   })
 
-  // Lọc xét nghiệm
-  const filteredTests = labTests.filter(test => {
-    const matchesSearch = test.testCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         test.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         test.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         test.testType.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesDoctor = !filterDoctor || test.doctorId === parseInt(filterDoctor)
-    const matchesStatus = !filterStatus || test.status === filterStatus
-    
-    return matchesSearch && matchesDoctor && matchesStatus
-  })
+  // Filtering is done on server side via API
+  const filteredTests = labTests
 
   const handleAddTest = () => {
     const newCode = `XN${String(labTests.length + 1).padStart(3, '0')}`
@@ -143,20 +131,46 @@ const LabTests = () => {
     setShowEditModal(true)
   }
 
-  const handleViewTest = (test) => {
-    setSelectedTest(test)
-    setShowViewModal(true)
+  const handleViewTest = async (test) => {
+    try {
+      const detail = await adminAPI.getLabTestDetail(test.id)
+      setSelectedTest(formatLabTestDetail(detail))
+      setShowViewModal(true)
+    } catch (err) {
+      console.error('Lỗi khi tải chi tiết xét nghiệm:', err)
+      setSelectedTest(test)
+      setShowViewModal(true)
+    }
   }
+
+  const formatLabTestDetail = (detail) => ({
+    id: detail.labtestId || detail.id,
+    testCode: detail.testCode || `XN${String(detail.labtestId || detail.id).padStart(3, '0')}`,
+    patientId: detail.patientId || detail.benhnhan?.benhnhanId,
+    patientName: detail.patientName || detail.benhnhan?.hoTen,
+    doctorId: detail.doctorId || detail.bacsi?.bacsiId,
+    doctorName: detail.doctorName || detail.bacsi?.hoTen,
+    requestDate: detail.requestDate || detail.ngayTest,
+    testType: detail.testType || detail.loaiXetNghiem,
+    tests: detail.tests || [],
+    status: detail.status || null,
+    completedDate: detail.completedDate || null,
+    technician: detail.technician || null,
+    notes: detail.notes || null
+  })
 
   const handleSubmit = (e) => {
     e.preventDefault()
     
+    // TODO: Implement create/update API calls when backend endpoints are available
     if (showEditModal && selectedTest) {
+      // Cập nhật xét nghiệm (tạm thời chỉ update local state)
       setLabTests(labTests.map(test => 
         test.id === selectedTest.id ? { ...test, ...formData } : test
       ))
       setShowEditModal(false)
     } else {
+      // Tạo xét nghiệm mới (tạm thời chỉ update local state)
       const newTest = {
         id: labTests.length + 1,
         ...formData

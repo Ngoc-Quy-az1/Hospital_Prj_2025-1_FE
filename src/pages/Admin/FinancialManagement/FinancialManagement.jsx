@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Card from '../../../components/Common/Card'
 import Button from '../../../components/Common/Button'
 import Modal from '../../../components/Common/Modal'
 import Table from '../../../components/Common/Table'
+import { adminAPI } from '../../../services/api'
 import { 
   DollarSign, 
   Plus, 
@@ -29,53 +30,78 @@ const FinancialManagement = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterPaymentMethod, setFilterPaymentMethod] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(0)
+  const [size] = useState(20)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [stats, setStats] = useState({
+    totalInvoices: 0,
+    paidInvoices: 0,
+    unpaidInvoices: 0,
+    totalRevenue: 0
+  })
 
-  // Dữ liệu mẫu hóa đơn
-  const [invoices, setInvoices] = useState([
-    {
-      id: 1,
-      invoiceCode: 'HD001',
-      patientId: 1,
-      patientName: 'Nguyễn Thị An',
-      invoiceDate: '2024-01-15',
-      dueDate: '2024-01-22',
-      services: [
-        { name: 'Khám tim mạch', price: 150000, quantity: 1, total: 150000 },
-        { name: 'Xét nghiệm máu', price: 200000, quantity: 1, total: 200000 },
-        { name: 'Điện tâm đồ', price: 100000, quantity: 1, total: 100000 }
-      ],
-      subtotal: 450000,
-      discount: 0,
-      tax: 45000,
-      total: 495000,
-      paid: 495000,
-      balance: 0,
-      status: 'Đã thanh toán',
-      paymentMethod: 'Tiền mặt',
-      notes: 'Bệnh nhân có BHYT'
-    },
-    {
-      id: 2,
-      invoiceCode: 'HD002',
-      patientId: 2,
-      patientName: 'Trần Văn Bình',
-      invoiceDate: '2024-01-16',
-      dueDate: '2024-01-23',
-      services: [
-        { name: 'Khám nội', price: 120000, quantity: 1, total: 120000 },
-        { name: 'Siêu âm bụng', price: 180000, quantity: 1, total: 180000 }
-      ],
-      subtotal: 300000,
-      discount: 30000,
-      tax: 27000,
-      total: 297000,
-      paid: 0,
-      balance: 297000,
-      status: 'Chưa thanh toán',
-      paymentMethod: '',
-      notes: 'Giảm giá 10% cho bệnh nhân ngoại trú'
+  // Dữ liệu từ API
+  const [invoices, setInvoices] = useState([])
+
+  // Load invoices from API
+  useEffect(() => {
+    loadInvoices()
+    loadStats()
+  }, [page, searchTerm, filterStatus])
+
+  const loadInvoices = async () => {
+    setLoading(true)
+    try {
+      const response = await adminAPI.getInvoices(page, size, {
+        search: searchTerm || undefined,
+        status: filterStatus || undefined
+      })
+      const fetchedInvoices = response.content || response.data || []
+      setInvoices(fetchedInvoices.map(formatInvoice))
+      setTotalPages(response.totalPages || 0)
+      setTotalElements(response.totalElements || 0)
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách hóa đơn:', err)
+      setInvoices([])
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
+
+  const loadStats = async () => {
+    try {
+      const response = await adminAPI.getInvoiceStats()
+      setStats({
+        totalInvoices: response.totalInvoices || 0,
+        paidInvoices: response.paidInvoices || 0,
+        unpaidInvoices: response.unpaidInvoices || 0,
+        totalRevenue: response.totalRevenue || 0
+      })
+    } catch (err) {
+      console.error('Lỗi khi tải thống kê hóa đơn:', err)
+    }
+  }
+
+  const formatInvoice = (invoice) => ({
+    id: invoice.id || invoice.hoadonId,
+    invoiceCode: invoice.invoiceCode || `HD${String(invoice.id || invoice.hoadonId).padStart(3, '0')}`,
+    patientId: invoice.patientId || invoice.benhnhan?.benhnhanId,
+    patientName: invoice.patientName || invoice.benhnhan?.hoTen,
+    invoiceDate: invoice.invoiceDate || invoice.ngayLap,
+    dueDate: invoice.dueDate || null,
+    services: invoice.services || [],
+    subtotal: invoice.subtotal || invoice.total || 0,
+    discount: invoice.discount || 0,
+    tax: invoice.tax || 0,
+    total: invoice.total || 0,
+    paid: invoice.paid || 0,
+    balance: invoice.balance || 0,
+    status: invoice.status || 'Chưa thanh toán',
+    paymentMethod: invoice.paymentMethod || '',
+    notes: invoice.notes || ''
+  })
 
   const [formData, setFormData] = useState({
     invoiceCode: '',
@@ -95,16 +121,8 @@ const FinancialManagement = () => {
     notes: ''
   })
 
-  // Lọc hóa đơn
-  const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.invoiceCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.patientName.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = !filterStatus || invoice.status === filterStatus
-    const matchesPaymentMethod = !filterPaymentMethod || invoice.paymentMethod === filterPaymentMethod
-    
-    return matchesSearch && matchesStatus && matchesPaymentMethod
-  })
+  // Filtering is done on server side via API
+  const filteredInvoices = invoices
 
   const handleAddInvoice = () => {
     const newCode = `HD${String(invoices.length + 1).padStart(3, '0')}`
@@ -135,9 +153,16 @@ const FinancialManagement = () => {
     setShowEditModal(true)
   }
 
-  const handleViewInvoice = (invoice) => {
-    setSelectedInvoice(invoice)
-    setShowViewModal(true)
+  const handleViewInvoice = async (invoice) => {
+    try {
+      const detail = await adminAPI.getInvoiceDetail(invoice.id)
+      setSelectedInvoice(formatInvoice(detail))
+      setShowViewModal(true)
+    } catch (err) {
+      console.error('Lỗi khi tải chi tiết hóa đơn:', err)
+      setSelectedInvoice(invoice)
+      setShowViewModal(true)
+    }
   }
 
   const handleSubmit = (e) => {
@@ -369,7 +394,7 @@ const FinancialManagement = () => {
               </div>
               <div className="text-sm font-medium text-gray-500">Tổng hóa đơn</div>
             </div>
-            <div className="text-4xl font-bold text-gray-900 mb-1">{invoices.length}</div>
+            <div className="text-4xl font-bold text-gray-900 mb-1">{stats.totalInvoices}</div>
             <div className="text-sm text-gray-500">Tất cả hóa đơn</div>
           </div>
         </Card>
@@ -384,7 +409,7 @@ const FinancialManagement = () => {
               <div className="text-sm font-medium text-gray-500">Đã thanh toán</div>
             </div>
             <div className="text-4xl font-bold text-gray-900 mb-1">
-              {invoices.filter(i => i.status === 'Đã thanh toán').length}
+              {stats.paidInvoices}
             </div>
             <div className="text-sm text-gray-500">Đã hoàn thành</div>
           </div>
@@ -400,7 +425,7 @@ const FinancialManagement = () => {
               <div className="text-sm font-medium text-gray-500">Chưa thanh toán</div>
             </div>
             <div className="text-4xl font-bold text-gray-900 mb-1">
-              {invoices.filter(i => i.status === 'Chưa thanh toán').length}
+              {stats.unpaidInvoices}
             </div>
             <div className="text-sm text-gray-500">Đang chờ thanh toán</div>
           </div>
@@ -416,7 +441,7 @@ const FinancialManagement = () => {
               <div className="text-sm font-medium text-gray-500">Tổng doanh thu</div>
             </div>
             <div className="text-4xl font-bold text-gray-900 mb-1">
-              {invoices.reduce((sum, i) => sum + i.total, 0).toLocaleString('vi-VN')} VNĐ
+              {parseInt(stats.totalRevenue).toLocaleString('vi-VN')} VNĐ
             </div>
             <div className="text-sm text-gray-500">Tổng giá trị</div>
           </div>

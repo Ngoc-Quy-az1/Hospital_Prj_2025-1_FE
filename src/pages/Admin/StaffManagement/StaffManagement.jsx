@@ -63,7 +63,9 @@ const StaffManagement = () => {
               endDate: endDateFilter || undefined,
             })
           : { content: [], totalPages: 0 }
-        const fetchedStaff = staffResponse.content || staffResponse.data || []
+        const fetchedStaff = Array.isArray(staffResponse)
+          ? staffResponse
+          : (staffResponse.content || staffResponse.data || [])
         const formattedStaff = fetchedStaff.map(s => ({
           id: s.nhanvien_id || s.nhanvienId,
           name: s.ho_ten || s.hoTen || '-',
@@ -87,7 +89,9 @@ const StaffManagement = () => {
               endDate: endDateFilter || undefined,
             })
           : { content: [], totalPages: 0 }
-        const fetchedDoctors = doctorsResponse.content || doctorsResponse.data || []
+        const fetchedDoctors = Array.isArray(doctorsResponse)
+          ? doctorsResponse
+          : (doctorsResponse.content || doctorsResponse.data || [])
         const formattedDoctors = fetchedDoctors.map(d => ({
           id: d.bacsi_id || d.bacsiId || d.bacSiId,
           name: d.ho_ten || d.hoTen || d.hoten || '-',
@@ -160,19 +164,22 @@ const StaffManagement = () => {
   useEffect(() => {
     const loadCounts = async () => {
       try {
-        const [staffCount, doctorCount] = await Promise.all([
+        const [staffCountResponse, doctorCountResponse] = await Promise.all([
           adminAPI.countStaff(),
           adminAPI.countDoctors(),
         ])
-        setTotalStaff(staffCount)
-        setTotalDoctors(doctorCount)
-      } catch (_) { /* ignore */ }
+        // Backend trả về object { total: <number> }, cần extract giá trị
+        setTotalStaff(staffCountResponse?.total || staffCountResponse || 0)
+        setTotalDoctors(doctorCountResponse?.total || doctorCountResponse || 0)
+      } catch (err) {
+        console.error('Lỗi khi tải số lượng nhân viên/bác sĩ:', err)
+      }
     }
     loadCounts()
   }, [])
 
-  // Dữ liệu chức vụ để filter
-  const staffPositions = ['','Nhân viên','Y tá','Bộ phận tài chính']
+  // Removed hardcoded data - should come from API
+  const staffPositions = []
 
   const [formData, setFormData] = useState({
     name: '',

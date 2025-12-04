@@ -33,7 +33,31 @@ const Login = () => {
       const result = await login(formData.identifier, formData.password)
       
       if (result.success) {
-        navigate('/dashboard')
+        // Navigate based on user role
+        const role = result.user?.role
+        let dashboardPath = '/dashboard'
+        
+        switch (role) {
+          case 'admin':
+            dashboardPath = '/dashboard/admin/staff'
+            break
+          case 'doctor':
+            dashboardPath = '/dashboard/doctor/dashboard'
+            break
+          case 'patient':
+            dashboardPath = '/dashboard/patient/dashboard'
+            break
+          case 'accounting':
+            dashboardPath = '/dashboard/accounting/bills'
+            break
+          case 'pharmacy':
+            dashboardPath = '/dashboard/pharmacy/dashboard'
+            break
+          default:
+            dashboardPath = '/dashboard/overview'
+        }
+        
+        navigate(dashboardPath)
       } else {
         setError(result.message)
       }
@@ -44,21 +68,7 @@ const Login = () => {
     }
   }
 
-  // Mock credentials for demo
-  const mockCredentials = {
-    admin: { identifier: 'admin@hospital.com', password: 'admin123' },
-    doctor: { identifier: 'doctor@hospital.com', password: 'doctor123' },
-    nurse: { identifier: 'nurse@hospital.com', password: 'nurse123' },
-    patient: { identifier: 'patient@email.com', password: 'patient123' }
-  }
-
-  const fillMockData = (role) => {
-    const credentials = mockCredentials[role]
-    setFormData({
-      identifier: credentials.identifier,
-      password: credentials.password
-    })
-  }
+  // Không dùng mock credentials nữa, luôn yêu cầu người dùng nhập thật
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex relative overflow-hidden">
@@ -80,18 +90,10 @@ const Login = () => {
             playsInline
             className="w-full h-full object-cover"
           >
-            {/* Multiple video sources for better compatibility */}
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-doctor-in-hospital-examining-patient-23753-large.mp4" type="video/mp4" />
             <source src="https://videos.pexels.com/video-files/2491284/2491284-hd_1920_1080_25fps.mp4" type="video/mp4" />
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-medical-professionals-in-hospital-walking-23355-large.mp4" type="video/mp4" />
           </video>
           
           {/* Fallback images - Medical & Doctors themed */}
-          <img 
-            src="https://images.unsplash.com/photo-1576091160550-2173dba999e8?auto=format&fit=crop&w=2070&q=80"
-            alt="Doctors at Hospital"
-            className="absolute inset-0 w-full h-full object-cover animate-slideshow-1"
-          />
           <img 
             src="https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=2070&q=80"
             alt="Medical Team"
@@ -184,46 +186,7 @@ const Login = () => {
               </p>
             </div>
 
-            {/* Demo credentials */}
-            <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20 rounded-2xl p-5 mb-6 shadow-lg">
-              <h3 className="text-sm font-semibold text-blue-200 mb-4 flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                Thông tin demo:
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-xs mb-4">
-                <button
-                  onClick={() => fillMockData('admin')}
-                  className="text-left p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:shadow-lg transform hover:scale-105"
-                >
-                  <div className="font-bold text-blue-300 mb-1">Admin</div>
-                  <div className="text-slate-300 text-[10px]">admin@hospital.com</div>
-                </button>
-                <button
-                  onClick={() => fillMockData('doctor')}
-                  className="text-left p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:shadow-lg transform hover:scale-105"
-                >
-                  <div className="font-bold text-emerald-300 mb-1">Bác sĩ</div>
-                  <div className="text-slate-300 text-[10px]">doctor@hospital.com</div>
-                </button>
-                <button
-                  onClick={() => fillMockData('nurse')}
-                  className="text-left p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:shadow-lg transform hover:scale-105"
-                >
-                  <div className="font-bold text-purple-300 mb-1">Y tá</div>
-                  <div className="text-slate-300 text-[10px]">nurse@hospital.com</div>
-                </button>
-                <button
-                  onClick={() => fillMockData('patient')}
-                  className="text-left p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:shadow-lg transform hover:scale-105"
-                >
-                  <div className="font-bold text-orange-300 mb-1">Bệnh nhân</div>
-                  <div className="text-slate-300 text-[10px]">patient@email.com</div>
-                </button>
-              </div>
-              <p className="text-xs text-blue-200 bg-blue-500/20 backdrop-blur-sm px-3 py-2 rounded-lg border border-blue-400/20">
-                🔐 Mật khẩu: [role]123 (VD: admin123)
-              </p>
-            </div>
+            {/* Không hiển thị thông tin demo / mock account nữa */}
 
             {/* Login form */}
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -270,10 +233,28 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Error message */}
+              {/* Error message - Improved UI */}
               {error && (
-                <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-xl p-4">
-                  <p className="text-sm text-red-200">{error}</p>
+                <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/50 rounded-xl p-4 animate-fade-in">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <svg className="w-5 h-5 text-red-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-red-200 mb-1">Đăng nhập thất bại</p>
+                      <p className="text-sm text-red-300">{error}</p>
+                      {(error.includes('mật khẩu') || error.includes('password')) && (
+                        <Link 
+                          to="/forgot-password" 
+                          className="text-xs text-red-200 hover:text-red-100 underline mt-2 inline-block"
+                        >
+                          Quên mật khẩu? Nhấn vào đây để khôi phục
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -292,9 +273,12 @@ const Login = () => {
                 </div>
 
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-blue-300 hover:text-blue-200 transition-colors">
+                  <Link 
+                    to="/forgot-password" 
+                    className="font-medium text-blue-300 hover:text-blue-200 transition-colors"
+                  >
                     Quên mật khẩu?
-                  </a>
+                  </Link>
                 </div>
               </div>
 

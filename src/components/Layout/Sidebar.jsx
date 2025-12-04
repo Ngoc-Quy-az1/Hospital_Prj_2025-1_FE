@@ -28,14 +28,9 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
 
   // Menu items theo role
   const getMenuItems = () => {
-    const commonItems = [
-      { path: '/dashboard', label: 'Trang chủ', icon: LayoutDashboard }
-    ]
-
     switch (user?.role) {
       case 'admin':
         return [
-          ...commonItems,
           { path: '/dashboard/admin/staff', label: 'Quản lý nhân sự', icon: Users },
           { path: '/dashboard/admin/schedule', label: 'Quản lý lịch trực', icon: Calendar },
           { path: '/dashboard/admin/patients', label: 'Quản lý bệnh nhân', icon: Heart },
@@ -44,7 +39,6 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
           { path: '/dashboard/admin/prescriptions', label: 'Quản lý đơn thuốc', icon: FileText },
           { path: '/dashboard/admin/lab-tests', label: 'Quản lý xét nghiệm', icon: Activity },
           { path: '/dashboard/admin/financial', label: 'Quản lý viện phí', icon: BarChart3 },
-          { path: '/dashboard/admin/rooms', label: 'Quản lý phòng bệnh', icon: Building },
           { path: '/dashboard/admin/users', label: 'Quản lý tài khoản', icon: UserCog },
           { path: '/dashboard/admin/reports', label: 'Báo cáo thống kê', icon: BarChart3 },
           { path: '/dashboard/admin/feedback', label: 'Phản hồi & hỗ trợ', icon: Users }
@@ -82,7 +76,6 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
 
       case 'pharmacy':
         return [
-          ...commonItems,
           { path: '/dashboard/pharmacy/dashboard', label: 'Dashboard dược phẩm', icon: LayoutDashboard },
           { path: '/dashboard/pharmacy/prescriptions', label: 'Quản lý đơn thuốc', icon: FileText },
           { path: '/dashboard/pharmacy/inventory', label: 'Quản lý kho thuốc', icon: Pill },
@@ -90,7 +83,9 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
         ]
 
       default:
-        return commonItems
+        return [
+          { path: '/dashboard', label: 'Trang chủ', icon: LayoutDashboard }
+        ]
     }
   }
 

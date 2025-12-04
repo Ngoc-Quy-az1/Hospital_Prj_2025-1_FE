@@ -94,11 +94,12 @@ const Feedback = () => {
     }
   ])
 
-  const feedbackTypes = ['Khiếu nại', 'Góp ý', 'Khen ngợi', 'Hỗ trợ kỹ thuật']
-  const priorities = ['Thấp', 'Trung bình', 'Cao', 'Khẩn cấp']
-  const statuses = ['Chờ xử lý', 'Đang xử lý', 'Đã xử lý', 'Đã đóng']
-  const categories = ['Dịch vụ', 'Nhân viên', 'Cơ sở vật chất', 'Quy trình', 'Khác']
-  const departments = ['Phòng Dịch vụ', 'Phòng Nhân sự', 'Phòng Kỹ thuật', 'Phòng Quản lý']
+  // Removed hardcoded data - should come from API
+  const feedbackTypes = []
+  const priorities = []
+  const statuses = []
+  const categories = []
+  const departments = []
 
   const [formData, setFormData] = useState({
     feedbackCode: '',

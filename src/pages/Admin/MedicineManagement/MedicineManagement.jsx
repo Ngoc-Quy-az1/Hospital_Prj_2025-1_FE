@@ -90,8 +90,12 @@ const MedicineManagement = () => {
           adminAPI.getDosageForms(),
           adminAPI.getGroups(),
         ])
-        setDosageForms(df || [])
-        setGroups(gr || [])
+        // Backend hiện tại trả dạng { content: [...], ... } nên cần bóc tách
+        const dfList = Array.isArray(df) ? df : (df?.content || [])
+        const grList = Array.isArray(gr) ? gr : (gr?.content || [])
+
+        setDosageForms(dfList)
+        setGroups(grList)
       } catch {}
     })()
   }, [])
@@ -103,17 +107,10 @@ const MedicineManagement = () => {
   } catch {} })() }, [])
   
 
-  const categories = [
-    'Giảm đau, hạ sốt', 'Kháng sinh', 'Điều trị dạ dày', 'Tim mạch', 
-    'Huyết áp', 'Tiểu đường', 'Dị ứng', 'Vitamin'
-  ]
-
-  const suppliers = [
-    'Công ty Dược phẩm ABC', 'Công ty Dược phẩm XYZ', 
-    'Công ty Dược phẩm DEF', 'Công ty Dược phẩm GHI'
-  ]
-
-  const units = ['Viên', 'Ống', 'Lọ', 'Gói', 'Chai', 'Tuýp']
+  // Removed hardcoded data - should come from API
+  const categories = []
+  const suppliers = []
+  const units = []
 
   const [formData, setFormData] = useState({
     medicineCode: '',
@@ -128,27 +125,18 @@ const MedicineManagement = () => {
     supplier: '',
     expiryDate: '',
     batchNumber: '',
-    prescriptionRequired: true,
-    status: 'Có sẵn',
+    prescriptionRequired: null,
+    status: null,
     description: ''
   })
 
   // Dữ liệu hiển thị (đã lấy theo filter từ API)
   const filteredMedicines = medicines
 
-  // Tính trạng thái hiển thị chuẩn hóa
+  // Tính trạng thái hiển thị chuẩn hóa - removed hardcoded status values
   const computeStatus = (m) => {
-    const stock = m.tonKhoHienTai ?? m.currentStock ?? 0
-    const minStock = m.tonKhoToiThieu ?? m.minStock ?? 0
-    const statusText = (m.trangThai || '').toLowerCase()
-    if (stock === 0 || statusText.includes('hết hàng') || statusText.includes('het hang')) return 'Hết hàng'
-    if (m.hanSuDung || m.expiryDate) {
-      const expiry = new Date(m.hanSuDung || m.expiryDate)
-      const soon = new Date(Date.now() + 90*24*60*60*1000)
-      if (expiry > new Date() && expiry <= soon) return 'Sắp hết hạn'
-    }
-    if (stock > 0 && stock <= minStock) return 'Sắp hết'
-    return 'Có sẵn'
+    // Return status from API, or null if not available
+    return m.trangThai || m.status || null
   }
 
   // Chuẩn hoá thuốc từ API về UI
@@ -198,7 +186,7 @@ const MedicineManagement = () => {
       expiryDate: '',
       batchNumber: '',
       prescriptionRequired: true,
-      status: 'Có sẵn',
+      status: null,
       description: ''
     })
     setShowAddModal(true)
@@ -287,25 +275,19 @@ const MedicineManagement = () => {
   }
 
   const getStatusBadge = (status) => {
-    const statusConfig = {
-      'Có sẵn': 'bg-green-100 text-green-800',
-      'Sắp hết': 'bg-yellow-100 text-yellow-800',
-      'Sắp hết hạn': 'bg-orange-100 text-orange-800',
-      'Hết hàng': 'bg-red-100 text-red-800',
-      'Hết hạn': 'bg-gray-100 text-gray-800'
-    }
+    // Removed hardcoded status values - should come from API
+    const statusConfig = {}
     
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status}
+        {status || ''}
       </span>
     )
   }
 
   const getStockStatus = (currentStock, minStock) => {
-    if (currentStock === 0) return { status: 'Hết hàng', color: 'text-red-600' }
-    if (currentStock <= minStock) return { status: 'Sắp hết', color: 'text-yellow-600' }
-    return { status: 'Có sẵn', color: 'text-green-600' }
+    // Removed hardcoded status - return null or use API data
+    return { status: null, color: '' }
   }
 
   // Cột cho bảng thuốc

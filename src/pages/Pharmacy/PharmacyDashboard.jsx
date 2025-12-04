@@ -51,24 +51,9 @@ const PharmacyDashboard = () => {
         // Load pending prescriptions
         const pendingResponse = await pharmacyAPI.getPendingPrescriptions()
         if (pendingResponse.success) {
-          setPendingPrescriptions(pendingResponse.data)
+          setPendingPrescriptions(pendingResponse.data || [])
         } else {
-          // Fallback to mock data
-          setPendingPrescriptions([
-            {
-              id: 1,
-              prescriptionCode: 'DT001',
-              patientName: 'Nguyễn Văn A',
-              doctorName: 'BS. Trần Thị B',
-              prescriptionDate: '2024-01-20',
-              medicines: [
-                { name: 'Paracetamol 500mg', quantity: 20, dosage: '1 viên x 3 lần/ngày' },
-                { name: 'Amoxicillin 250mg', quantity: 30, dosage: '1 viên x 2 lần/ngày' }
-              ],
-              status: 'Chờ xử lý',
-              priority: 'Bình thường'
-            }
-          ])
+          setPendingPrescriptions([])
         }
 
         // Load prescription history
@@ -82,33 +67,9 @@ const PharmacyDashboard = () => {
         // Load inventory
         const inventoryResponse = await pharmacyAPI.getInventory()
         if (inventoryResponse.success) {
-          setInventory(inventoryResponse.data)
+          setInventory(inventoryResponse.data || [])
         } else {
-          // Fallback to mock data
-          setInventory([
-            {
-              id: 1,
-              medicineName: 'Paracetamol 500mg',
-              currentStock: 150,
-              minStock: 50,
-              maxStock: 500,
-              unit: 'Viên',
-              expiryDate: '2025-12-31',
-              supplier: 'Công ty ABC',
-              status: 'Còn hàng'
-            },
-            {
-              id: 2,
-              medicineName: 'Amoxicillin 250mg',
-              currentStock: 25,
-              minStock: 50,
-              maxStock: 300,
-              unit: 'Viên',
-              expiryDate: '2024-06-30',
-              supplier: 'Công ty XYZ',
-              status: 'Sắp hết'
-            }
-          ])
+          setInventory([])
         }
 
         // Load low stock medicines

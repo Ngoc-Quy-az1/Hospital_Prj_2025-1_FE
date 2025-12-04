@@ -6,6 +6,8 @@ import Layout from './components/Layout/Layout'
 import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
 import OTPVerification from './pages/Auth/OTPVerification'
+import ForgotPassword from './pages/Auth/ForgotPassword'
+import ResetPassword from './pages/Auth/ResetPassword'
 import Home from './pages/Home/Home'
 
 // Admin Pages
@@ -17,7 +19,6 @@ import MedicineManagement from './pages/Admin/MedicineManagement/MedicineManagem
 import PrescriptionManagement from './pages/Admin/PrescriptionManagement/PrescriptionManagement'
 import LabTests from './pages/Admin/LabTests/LabTests'
 import FinancialManagement from './pages/Admin/FinancialManagement/FinancialManagement'
-import RoomManagement from './pages/Admin/RoomManagement/RoomManagement'
 import UserManagement from './pages/Admin/UserManagement/UserManagement'
 import Reports from './pages/Admin/Reports/Reports'
 import Feedback from './pages/Admin/Feedback/Feedback'
@@ -74,7 +75,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Public Route component
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   
   if (loading) {
     return (
@@ -84,7 +85,35 @@ const PublicRoute = ({ children }) => {
     )
   }
   
-  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />
+  if (isAuthenticated) {
+    // Navigate based on user role
+    const role = user?.role
+    let dashboardPath = '/dashboard'
+    
+    switch (role) {
+      case 'admin':
+        dashboardPath = '/dashboard/admin/staff'
+        break
+      case 'doctor':
+        dashboardPath = '/dashboard/doctor/dashboard'
+        break
+      case 'patient':
+        dashboardPath = '/dashboard/patient/dashboard'
+        break
+      case 'accounting':
+        dashboardPath = '/dashboard/accounting/bills'
+        break
+      case 'pharmacy':
+        dashboardPath = '/dashboard/pharmacy/dashboard'
+        break
+      default:
+        dashboardPath = '/dashboard/overview'
+    }
+    
+    return <Navigate to={dashboardPath} replace />
+  }
+  
+  return children
 }
 
 // Dashboard Overview component
@@ -227,7 +256,6 @@ const AdminRoutes = () => {
       <Route path="prescriptions" element={<PrescriptionManagement />} />
       <Route path="lab-tests" element={<LabTests />} />
       <Route path="financial" element={<FinancialManagement />} />
-      <Route path="rooms" element={<RoomManagement />} />
       <Route path="users" element={<UserManagement />} />
       <Route path="reports" element={<Reports />} />
       <Route path="feedback" element={<Feedback />} />
@@ -346,6 +374,22 @@ const AppRoutes = () => {
         element={
           <PublicRoute>
             <OTPVerification />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/forgot-password" 
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/reset-password" 
+        element={
+          <PublicRoute>
+            <ResetPassword />
           </PublicRoute>
         } 
       />

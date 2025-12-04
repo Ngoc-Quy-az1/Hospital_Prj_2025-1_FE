@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Card from '../../../components/Common/Card'
 import Button from '../../../components/Common/Button'
 import Modal from '../../../components/Common/Modal'
 import Table from '../../../components/Common/Table'
+import { adminAPI } from '../../../services/api'
 import { 
   FileText, 
   Plus, 
@@ -29,83 +30,57 @@ const PrescriptionManagement = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterDoctor, setFilterDoctor] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(0)
+  const [size] = useState(20)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
 
-  // Dữ liệu mẫu đơn thuốc
-  const [prescriptions, setPrescriptions] = useState([
-    {
-      id: 1,
-      prescriptionCode: 'DT001',
-      patientId: 1,
-      patientName: 'Nguyễn Thị An',
-      doctorId: 1,
-      doctorName: 'BS. Nguyễn Văn An',
-      prescriptionDate: '2024-01-15',
-      totalAmount: 150000,
-      status: 'Đã cấp thuốc',
-      medicines: [
-        {
-          id: 1,
-          name: 'Paracetamol 500mg',
-          quantity: 20,
-          unit: 'Viên',
-          unitPrice: 500,
-          totalPrice: 10000,
-          dosage: '1 viên x 3 lần/ngày',
-          notes: 'Uống sau ăn'
-        },
-        {
-          id: 2,
-          name: 'Amoxicillin 250mg',
-          quantity: 30,
-          unit: 'Viên',
-          unitPrice: 1200,
-          totalPrice: 36000,
-          dosage: '1 viên x 2 lần/ngày',
-          notes: 'Uống trước ăn 30 phút'
-        }
-      ],
-      notes: 'Uống thuốc đều đặn, tái khám sau 1 tuần'
-    },
-    {
-      id: 2,
-      prescriptionCode: 'DT002',
-      patientId: 2,
-      patientName: 'Trần Văn Bình',
-      doctorId: 2,
-      doctorName: 'BS. Phạm Thị Dung',
-      prescriptionDate: '2024-01-16',
-      totalAmount: 85000,
-      status: 'Chờ cấp thuốc',
-      medicines: [
-        {
-          id: 3,
-          name: 'Omeprazole 20mg',
-          quantity: 14,
-          unit: 'Viên',
-          unitPrice: 2500,
-          totalPrice: 35000,
-          dosage: '1 viên x 1 lần/ngày',
-          notes: 'Uống trước ăn sáng'
-        }
-      ],
-      notes: 'Tránh thức ăn cay nóng'
+  // Dữ liệu từ API
+  const [prescriptions, setPrescriptions] = useState([])
+
+  // Load prescriptions from API
+  useEffect(() => {
+    loadPrescriptions()
+  }, [page, searchTerm, filterDoctor, filterStatus])
+
+  const loadPrescriptions = async () => {
+    setLoading(true)
+    try {
+      const response = await adminAPI.getPrescriptions(page, size, {
+        search: searchTerm || undefined,
+        doctorId: filterDoctor ? parseInt(filterDoctor) : undefined,
+        patientId: undefined
+      })
+      const fetchedPrescriptions = response.content || response.data || []
+      setPrescriptions(fetchedPrescriptions.map(formatPrescription))
+      setTotalPages(response.totalPages || 0)
+      setTotalElements(response.totalElements || 0)
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách đơn thuốc:', err)
+      setPrescriptions([])
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
 
-  // Dữ liệu mẫu bác sĩ và thuốc
-  const doctors = [
-    { id: 1, name: 'BS. Nguyễn Văn An', department: 'Khoa Tim mạch' },
-    { id: 2, name: 'BS. Phạm Thị Dung', department: 'Khoa Nội' },
-    { id: 3, name: 'BS. Vũ Thị Phương', department: 'Khoa Ngoại' }
-  ]
+  const formatPrescription = (prescription) => ({
+    id: prescription.donthuocId || prescription.id,
+    prescriptionCode: prescription.prescriptionCode || `DT${String(prescription.donthuocId || prescription.id).padStart(3, '0')}`,
+    patientId: prescription.patientId || prescription.benhnhan?.benhnhanId,
+    patientName: prescription.patientName || prescription.benhnhan?.hoTen,
+    doctorId: prescription.doctorId || prescription.bacsi?.bacsiId,
+    doctorName: prescription.doctorName || prescription.bacsi?.hoTen,
+    prescriptionDate: prescription.prescriptionDate || prescription.ngayKe,
+    totalAmount: prescription.totalAmount || 0,
+    status: prescription.status || null,
+    medicines: prescription.medicines || [],
+    notes: prescription.notes || prescription.ghiChu || ''
+  })
 
-  const medicines = [
-    { id: 1, name: 'Paracetamol 500mg', unitPrice: 500, unit: 'Viên' },
-    { id: 2, name: 'Amoxicillin 250mg', unitPrice: 1200, unit: 'Viên' },
-    { id: 3, name: 'Omeprazole 20mg', unitPrice: 2500, unit: 'Viên' },
-    { id: 4, name: 'Metformin 500mg', unitPrice: 800, unit: 'Viên' },
-    { id: 5, name: 'Aspirin 81mg', unitPrice: 300, unit: 'Viên' }
-  ]
+  // Removed hardcoded data - should come from API
+  const doctors = []
+  const medicines = []
 
   const [formData, setFormData] = useState({
     prescriptionCode: '',
@@ -120,17 +95,8 @@ const PrescriptionManagement = () => {
     notes: ''
   })
 
-  // Lọc đơn thuốc
-  const filteredPrescriptions = prescriptions.filter(prescription => {
-    const matchesSearch = prescription.prescriptionCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prescription.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prescription.doctorName.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesDoctor = !filterDoctor || prescription.doctorId === parseInt(filterDoctor)
-    const matchesStatus = !filterStatus || prescription.status === filterStatus
-    
-    return matchesSearch && matchesDoctor && matchesStatus
-  })
+  // Filtering is done on server side via API
+  const filteredPrescriptions = prescriptions
 
   const handleAddPrescription = () => {
     // Tạo mã đơn thuốc mới
@@ -157,10 +123,31 @@ const PrescriptionManagement = () => {
     setShowEditModal(true)
   }
 
-  const handleViewPrescription = (prescription) => {
-    setSelectedPrescription(prescription)
-    setShowViewModal(true)
+  const handleViewPrescription = async (prescription) => {
+    try {
+      const detail = await adminAPI.getPrescriptionDetail(prescription.id)
+      setSelectedPrescription(formatPrescriptionDetail(detail))
+      setShowViewModal(true)
+    } catch (err) {
+      console.error('Lỗi khi tải chi tiết đơn thuốc:', err)
+      setSelectedPrescription(prescription)
+      setShowViewModal(true)
+    }
   }
+
+  const formatPrescriptionDetail = (detail) => ({
+    id: detail.donthuocId || detail.id,
+    prescriptionCode: detail.prescriptionCode || `DT${String(detail.donthuocId || detail.id).padStart(3, '0')}`,
+    patientId: detail.patientId || detail.benhnhan?.benhnhanId,
+    patientName: detail.patientName || detail.benhnhan?.hoTen,
+    doctorId: detail.doctorId || detail.bacsi?.bacsiId,
+    doctorName: detail.doctorName || detail.bacsi?.hoTen,
+    prescriptionDate: detail.prescriptionDate || detail.ngayKe,
+    totalAmount: detail.totalAmount || 0,
+    status: detail.status || null,
+    medicines: detail.medicines || [],
+    notes: detail.notes || detail.ghiChu || ''
+  })
 
   const handleSubmit = (e) => {
     e.preventDefault()

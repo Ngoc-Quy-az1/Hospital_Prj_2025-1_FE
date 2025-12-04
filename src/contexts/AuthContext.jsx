@@ -9,38 +9,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Mock data cho các loại user
-  const mockUsers = {
-    admin: {
-      id: 1,
-      name: 'Nguyễn Văn Admin',
-      email: 'admin@hospital.com',
-      role: 'admin',
-      avatar: null,
-      permissions: ['manage_users', 'manage_doctors', 'manage_nurses', 'view_reports', 'system_settings']
-    },
-    doctor: {
-      id: 2,
-      name: 'BS. Trần Thị Hoa',
-      email: 'doctor@hospital.com',
-      role: 'doctor',
-      avatar: null,
-      specialization: 'Tim mạch',
-      department: 'Khoa Tim mạch',
-      license: 'BS-2023-001'
-    },
-    patient: {
-      id: 4,
-      name: 'Nguyễn Thị Lan',
-      email: 'patient@email.com',
-      role: 'patient',
-      avatar: null,
-      phone: '0123456789',
-      address: '123 Đường ABC, Quận 1, TP.HCM',
-      insurance: 'BHYT-2023-003'
-    }
-  }
-
   // Kiểm tra authentication khi component mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -104,7 +72,16 @@ export const AuthProvider = ({ children }) => {
   // Hàm decode JWT để lấy thông tin user
   const decodeJWT = (token) => {
     try {
-      const base64Url = token.split('.')[1]
+      if (!token || typeof token !== 'string') {
+        console.warn('Token is invalid or undefined')
+        return null
+      }
+      const parts = token.split('.')
+      if (parts.length !== 3) {
+        console.warn('Invalid JWT format')
+        return null
+      }
+      const base64Url = parts[1]
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
       const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
@@ -254,23 +231,20 @@ export const AuthProvider = ({ children }) => {
       console.log('Response type:', typeof response) // Debug log
       console.log('Response length:', response?.length) // Debug log
       
-      // API trả về string "Account activated successfully"
-      if (response === "Account activated successfully") {
-        console.log('✅ Exact match success')
+      // API trả về object {success: true, message: "Account activated successfully"}
+      if (response && response.success === true) {
+        console.log('✅ OTP verification success')
         setLoading(false)
-        return { success: true, message: 'Tài khoản đã được kích hoạt thành công!' }
+        return { success: true, message: response.message || 'Tài khoản đã được kích hoạt thành công!' }
       } else if (response && typeof response === 'string' && response.includes('successfully')) {
-        console.log('✅ Contains successfully')
-        setLoading(false)
-        return { success: true, message: 'Tài khoản đã được kích hoạt thành công!' }
-      } else if (response && response.status === 200) {
-        console.log('✅ Status 200 success')
+        // Fallback cho trường hợp API trả về string
+        console.log('✅ Contains successfully (string)')
         setLoading(false)
         return { success: true, message: 'Tài khoản đã được kích hoạt thành công!' }
       } else {
-        console.log('❌ No success condition met')
+        console.log('❌ No success condition met', response)
         setLoading(false)
-        return { success: false, message: 'Xác thực OTP thất bại' }
+        return { success: false, message: response?.message || 'Xác thực OTP thất bại' }
       }
     } catch (error) {
       console.error('OTP verification error:', error)

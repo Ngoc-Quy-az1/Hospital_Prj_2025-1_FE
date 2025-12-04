@@ -1,5 +1,8 @@
 // API Base Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+// In development, use localhost:8090
+// In production, use full URL or environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.DEV ? 'http://localhost:8090' : 'https://hospital-prj-2025-1-be.onrender.com')
 
 // API Client Class
 class ApiClient {
@@ -179,6 +182,34 @@ class ApiClient {
   async delete(endpoint, options = {}) {
     return this.request(endpoint, { method: 'DELETE', ...options })
   }
+
+  // Download file (for Excel, PDF, etc.)
+  async downloadFile(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`
+    const token = this.getToken()
+
+    const config = {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
+      },
+      ...options,
+    }
+
+    try {
+      const response = await fetch(url, config)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return response.blob()
+    } catch (error) {
+      console.error('File Download Error:', error)
+      throw error
+    }
+  }
 }
 
 // Create API client instance
@@ -193,6 +224,8 @@ export const authAPI = {
   refresh: (refreshToken) => apiClient.post('/api/auth/refresh', { refreshToken }),
   debugOTP: (email) => apiClient.get(`/api/auth/debug-otp/${email}`),
   logout: () => apiClient.post('/api/auth/logout'),
+  forgotPassword: (data) => apiClient.post('/api/auth/forgot-password', data),
+  resetPassword: (data) => apiClient.post('/api/auth/reset-password', data),
 }
 
 // Patient APIs
@@ -482,6 +515,42 @@ export const adminAPI = {
   deletePatient: (id) => apiClient.delete(`/api/admin/patients/${id}`),
   getPatientStats: () => apiClient.get('/api/admin/patients/stats'),
 
+  // Prescription management
+  getPrescriptions: (page = 0, size = 20, { search, doctorId, patientId } = {}) => {
+    const params = new URLSearchParams()
+    params.set('page', page)
+    params.set('size', size)
+    if (search) params.set('search', search)
+    if (doctorId) params.set('doctorId', doctorId)
+    if (patientId) params.set('patientId', patientId)
+    return apiClient.get(`/api/admin/prescriptions?${params.toString()}`)
+  },
+  getPrescriptionDetail: (id) => apiClient.get(`/api/admin/prescriptions/${id}`),
+
+  // Lab test management
+  getLabTests: (page = 0, size = 20, { search, doctorId, patientId } = {}) => {
+    const params = new URLSearchParams()
+    params.set('page', page)
+    params.set('size', size)
+    if (search) params.set('search', search)
+    if (doctorId) params.set('doctorId', doctorId)
+    if (patientId) params.set('patientId', patientId)
+    return apiClient.get(`/api/admin/lab-tests?${params.toString()}`)
+  },
+  getLabTestDetail: (id) => apiClient.get(`/api/admin/lab-tests/${id}`),
+
+  // Invoice management
+  getInvoices: (page = 0, size = 20, { search, status } = {}) => {
+    const params = new URLSearchParams()
+    params.set('page', page)
+    params.set('size', size)
+    if (search) params.set('search', search)
+    if (status) params.set('status', status)
+    return apiClient.get(`/api/admin/invoices?${params.toString()}`)
+  },
+  getInvoiceDetail: (id) => apiClient.get(`/api/admin/invoices/${id}`),
+  getInvoiceStats: () => apiClient.get('/api/admin/invoices/stats'),
+
   // System configuration
   getConfig: () => apiClient.get('/api/admin/config'),
   updateConfig: (data) => apiClient.put('/api/admin/config', data),
@@ -513,7 +582,8 @@ export const adminAPI = {
     const queryString = queryParams.toString()
     return apiClient.get(`/api/admin/shifts/summary${queryString ? '?' + queryString : ''}`)
   },
-  getDoctors: (departmentId = null) => {
+  // Doctors list used for schedule management (tránh trùng tên với getDoctors quản lý bác sĩ)
+  getShiftDoctors: (departmentId = null) => {
     const queryString = departmentId ? `?departmentId=${departmentId}` : ''
     return apiClient.get(`/api/admin/shifts/doctors${queryString}`)
   },
@@ -524,7 +594,7 @@ export const adminAPI = {
     if (params.mode) queryParams.set('mode', params.mode)
     if (params.departmentId) queryParams.set('departmentId', params.departmentId)
     const queryString = queryParams.toString()
-    return apiClient.get(`/api/admin/shifts/export${queryString ? '?' + queryString : ''}`)
+    return apiClient.downloadFile(`/api/admin/shifts/export${queryString ? '?' + queryString : ''}`)
   },
 }
 

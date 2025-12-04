@@ -81,12 +81,21 @@ const Register = () => {
       
       if (result.success) {
         console.log('✅ Setting success message and step 2')
-        setSuccessMessage(result.message)
+        console.log('📧 Register response:', result)
+        
+        // Nếu có devOTP trong response (dev mode), hiển thị cho user
+        let successMsg = result.message
+        if (result.devOTP) {
+          successMsg = `${result.message}\n\n🔐 OTP Code (Dev Mode): ${result.devOTP}\n\n⚠️ ${result.devMessage || 'Mail sender chưa được cấu hình. Vui lòng sử dụng OTP ở trên để test.'}`
+          console.log('🔐 DEV OTP CODE:', result.devOTP)
+        }
+        
+        setSuccessMessage(successMsg)
         setErrors({})
         // Chuyển sang trang OTP verification
         setTimeout(() => {
           console.log('⏰ Timeout: Navigating to OTP page')
-          navigate('/verify-otp', { state: { email: formData.email } })
+          navigate('/verify-otp', { state: { email: formData.email, devOTP: result.devOTP } })
         }, 500)
       } else {
         console.log('❌ Setting error message')
@@ -259,24 +268,24 @@ const Register = () => {
 
           {successMessage && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <div className="flex items-center">
+              <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm text-green-800">{successMessage}</p>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm text-green-800 whitespace-pre-line">{successMessage}</p>
+                  {successMessage.includes('OTP Code (Dev Mode)') && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-xs text-yellow-800 font-semibold mb-1">⚠️ Lưu ý:</p>
+                      <p className="text-xs text-yellow-700">
+                        Email chưa được cấu hình hoặc không gửi được. OTP đã được hiển thị ở trên và log ra console backend. 
+                        Vui lòng kiểm tra terminal của backend server để xem OTP code.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="mt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="text-xs text-blue-600 hover:text-blue-800 underline"
-                >
-                  🔧 Skip to OTP (Debug)
-                </button>
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { doctorAPI } from '../../services/api'
 import Card from '../../components/Common/Card'
@@ -42,10 +42,10 @@ const DoctorPrescriptions = () => {
     totalPages: 0 
   })
 
-  // Dữ liệu thuốc từ API
+  // Dữ liệu thuốc gợi ý & bệnh nhân
   const [availableMedicines, setAvailableMedicines] = useState([])
   const [availablePatients, setAvailablePatients] = useState([])
-  const [loadingMedicines, setLoadingMedicines] = useState(false)
+  const [medicineSearchTerm, setMedicineSearchTerm] = useState('')
 
   const [prescriptionForm, setPrescriptionForm] = useState({
     patientName: '',
@@ -113,31 +113,38 @@ const DoctorPrescriptions = () => {
     }
   }, [])
 
-  // Load medicines và patients khi component mount
-  const loadMedicines = useCallback(async () => {
-    setLoadingMedicines(true)
-    try {
-      const response = await doctorAPI.getMedicines({ page: 0, size: 1000 })
-      const medicinesData = response.content || response.data || []
-      const mappedMedicines = medicinesData.map(med => ({
-        id: med.thuocId || med.id,
-        name: med.tenThuoc || med.name || '',
-        unitPrice: med.donGia ? parseFloat(med.donGia) : 0,
-        unit: med.donViTinh || med.donVi || 'Viên',
-        stock: med.tonKhoHienTai || med.stock || 0
-      }))
-      setAvailableMedicines(mappedMedicines)
-    } catch (err) {
-      console.error('Lỗi khi tải danh sách thuốc:', err)
+  // Load medicines theo tên nhập (search server-side, tránh tải 9000 bản ghi)
+  useEffect(() => {
+    if (!medicineSearchTerm || medicineSearchTerm.trim().length < 2) {
       setAvailableMedicines([])
-    } finally {
-      setLoadingMedicines(false)
+      return
     }
-  }, [])
+
+    const term = medicineSearchTerm.trim()
+    const handler = setTimeout(async () => {
+      try {
+        const response = await doctorAPI.getMedicines({ search: term, page: 0, size: 10 })
+        const medicinesData = response.content || response.data || []
+        const mappedMedicines = medicinesData.map(med => ({
+          id: med.thuocId || med.id,
+          name: med.tenThuoc || med.name || '',
+          unitPrice: med.donGia ? parseFloat(med.donGia) : 0,
+          unit: med.donViTinh || med.donVi || 'Viên',
+          stock: med.tonKhoHienTai || med.stock || 0
+        }))
+        setAvailableMedicines(mappedMedicines)
+      } catch (err) {
+        console.error('Lỗi khi tìm thuốc:', err)
+        setAvailableMedicines([])
+      }
+    }, 300)
+
+    return () => clearTimeout(handler)
+  }, [medicineSearchTerm])
 
   const loadPatients = useCallback(async () => {
     try {
-      const response = await doctorAPI.getPatients({ page: 0, size: 1000 })
+      const response = await doctorAPI.getPatients({ page: 0, size: 200 })
       const patientsData = response.content || response.data || []
       const mappedPatients = patientsData.map(patient => ({
         id: patient.benhnhanId || patient.id,
@@ -154,7 +161,6 @@ const DoctorPrescriptions = () => {
   // Load prescriptions khi component mount
   useEffect(() => {
     loadPrescriptions(0, pageInfo.size)
-    loadMedicines()
     loadPatients()
   }, [])
 
@@ -174,35 +180,40 @@ const DoctorPrescriptions = () => {
     }
   }
 
-  // Lọc đơn thuốc
-  const filteredPrescriptions = prescriptions.filter(prescription => {
-    const matchesSearch = prescription.prescriptionCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prescription.patientName.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = !filterStatus || prescription.status === filterStatus
+  // Lọc đơn thuốc (dùng useMemo để tránh tính lại nặng trên mỗi lần gõ)
+  const filteredPrescriptions = useMemo(() => {
+    const search = searchTerm.toLowerCase()
 
-    // Lọc theo khoảng ngày kê
-    let matchesDate = true
-    if (filterDateFrom || filterDateTo) {
-      const date = prescription.prescriptionDate ? new Date(prescription.prescriptionDate) : null
-      if (!date) {
-        matchesDate = false
-      } else {
-        if (filterDateFrom) {
-          const from = new Date(filterDateFrom)
-          if (date < from) matchesDate = false
-        }
-        if (filterDateTo) {
-          const to = new Date(filterDateTo)
-          // so sánh đến cuối ngày
-          to.setHours(23, 59, 59, 999)
-          if (date > to) matchesDate = false
+    return prescriptions.filter(prescription => {
+      const matchesSearch =
+        prescription.prescriptionCode.toLowerCase().includes(search) ||
+        prescription.patientName.toLowerCase().includes(search)
+
+      const matchesStatus = !filterStatus || prescription.status === filterStatus
+
+      // Lọc theo khoảng ngày kê
+      let matchesDate = true
+      if (filterDateFrom || filterDateTo) {
+        const date = prescription.prescriptionDate ? new Date(prescription.prescriptionDate) : null
+        if (!date) {
+          matchesDate = false
+        } else {
+          if (filterDateFrom) {
+            const from = new Date(filterDateFrom)
+            if (date < from) matchesDate = false
+          }
+          if (filterDateTo) {
+            const to = new Date(filterDateTo)
+            // so sánh đến cuối ngày
+            to.setHours(23, 59, 59, 999)
+            if (date > to) matchesDate = false
+          }
         }
       }
-    }
-    
-    return matchesSearch && matchesStatus && matchesDate
-  })
+
+      return matchesSearch && matchesStatus && matchesDate
+    })
+  }, [prescriptions, searchTerm, filterStatus, filterDateFrom, filterDateTo])
 
   const handleCreatePrescription = () => {
     setPrescriptionForm({
@@ -218,7 +229,18 @@ const DoctorPrescriptions = () => {
 
   const handleViewPrescription = async (prescription) => {
     try {
-      const response = await doctorAPI.getPrescriptionDetail(prescription.id)
+      const id =
+        prescription.id ||
+        prescription.donThuocId ||
+        prescription.donthuocId
+
+      if (!id) {
+        console.error('Không xác định được ID đơn thuốc để xem chi tiết:', prescription)
+        alert('Không xác định được mã đơn thuốc, vui lòng tải lại trang và thử lại.')
+        return
+      }
+
+      const response = await doctorAPI.getPrescriptionDetail(id)
       const mapped = mapPrescription(response)
       setSelectedPrescription(mapped)
     } catch (err) {
@@ -248,7 +270,8 @@ const DoctorPrescriptions = () => {
           thuocId: med.id,
           soLuong: med.quantity,
           cachDung: med.dosage,
-          ghiChu: med.notes || ''
+          ghiChu: med.notes || '',
+          donGia: med.unitPrice || 0
         }))
       }
       
@@ -303,7 +326,9 @@ const DoctorPrescriptions = () => {
   }
 
   const removeMedicineFromPrescription = (medicineId) => {
-    const updatedMedicines = prescriptionForm.medicines.filter(med => med.id !== medicineId)
+    const updatedMedicines = prescriptionForm.medicines.filter(
+      med => (med.tempId || med.id) !== medicineId
+    )
     const totalAmount = updatedMedicines.reduce((sum, med) => sum + med.totalPrice, 0)
     
     setPrescriptionForm({
@@ -698,34 +723,47 @@ const DoctorPrescriptions = () => {
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Tên thuốc *
                       </label>
-                      <select
-                        value={medicine.id ? String(medicine.id) : ''}
+                      <input
+                        type="text"
+                        value={medicine.name}
                         onChange={(e) => {
                           const value = e.target.value
-                          const selectedMedicine = availableMedicines.find(
-                            (m) => String(m.id) === value
-                          )
-                          if (selectedMedicine) {
-                            const medicineId = medicine.tempId || medicine.id
-                            // cập nhật nhiều field của thuốc đã chọn trong một lần
-                            updateMedicineInPrescription(medicineId, {
-                              id: selectedMedicine.id,
-                              name: selectedMedicine.name,
-                              unitPrice: selectedMedicine.unitPrice,
-                              unit: selectedMedicine.unit
-                            })
-                          }
+                          const trimmed = value.trim().toLowerCase()
+
+                          // cập nhật term để gọi API search thuốc
+                          setMedicineSearchTerm(value)
+
+                          // Tìm thuốc gợi ý theo tên có chứa chuỗi nhập, giới hạn 1 thuốc đầu
+                          const matched = availableMedicines
+                            .filter(m => m.name && m.name.toLowerCase().includes(trimmed))
+                            .slice(0, 1)[0]
+
+                          const medicineId = medicine.tempId || medicine.id
+                          updateMedicineInPrescription(medicineId, {
+                            name: value,
+                            id: matched ? matched.id : medicine.id,
+                            unitPrice: matched ? matched.unitPrice : medicine.unitPrice,
+                            unit: matched ? matched.unit : medicine.unit
+                          })
                         }}
+                        list={`medicine-suggestions-${index}`}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nhập tên thuốc"
                         required
-                      >
-                        <option value="">Chọn thuốc</option>
-                        {availableMedicines.map(med => (
-                          <option key={med.id} value={med.id}>
-                            {med.name} - {med.unitPrice.toLocaleString('vi-VN')} VNĐ/đơn vị (Còn: {med.stock})
-                          </option>
-                        ))}
-                      </select>
+                      />
+                      <datalist id={`medicine-suggestions-${index}`}>
+                        {availableMedicines
+                          .filter(m => !medicine.name || m.name.toLowerCase().includes(medicine.name.toLowerCase()))
+                          .slice(0, 10)
+                          .map(med => (
+                            <option
+                              key={med.id}
+                              value={med.name}
+                            >
+                              {med.name}
+                            </option>
+                          ))}
+                      </datalist>
                     </div>
 
                     <div>

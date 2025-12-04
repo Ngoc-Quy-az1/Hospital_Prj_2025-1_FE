@@ -143,11 +143,8 @@ const DoctorSchedule = () => {
     }
   }
 
-  // Lọc lịch hẹn theo ngày
-  const appointmentsForDate = (appointments || []).filter(apt => {
-    const aptDate = apt.date ? apt.date.split('T')[0] : ''
-    return aptDate === selectedDate
-  })
+  // Danh sách lịch hẹn cho ngày đã chọn (đã được backend lọc theo date)
+  const appointmentsForDate = appointments || []
 
   // Lọc theo trạng thái
   const scheduledAppointments = appointmentsForDate.filter(a => a.status === 'scheduled')

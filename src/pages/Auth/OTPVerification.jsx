@@ -11,8 +11,9 @@ const OTPVerification = () => {
   const [resendTimer, setResendTimer] = useState(60)
   const [debugOTPData, setDebugOTPData] = useState(null)
   
-  // Lấy email từ state hoặc từ URL params
+  // Lấy email và devOTP từ state hoặc từ URL params
   const email = location.state?.email || 'user@example.com'
+  const devOTP = location.state?.devOTP || null
 
   // Tự động bắt đầu countdown khi component mount
   useEffect(() => {
@@ -65,16 +66,20 @@ const OTPVerification = () => {
       const result = await verifyOTP(email, otpCode)
       console.log('Verify OTP result:', result) // Debug log
       
-      if (result.success) {
+      if (result && result.success === true) {
         console.log('✅ OTP verification successful, navigating to login') // Debug log
-        navigate('/login')
+        setErrors({}) // Clear errors
+        // Delay nhỏ để đảm bảo state được update
+        setTimeout(() => {
+          navigate('/login', { replace: true })
+        }, 100)
       } else {
-        console.log('❌ OTP verification failed:', result.message) // Debug log
-        setErrors({ submit: result.message })
+        console.log('❌ OTP verification failed:', result?.message) // Debug log
+        setErrors({ submit: result?.message || 'Xác thực OTP thất bại' })
       }
     } catch (error) {
       console.error('OTP verification error:', error) // Debug log
-      setErrors({ submit: 'Có lỗi xảy ra, vui lòng thử lại' })
+      setErrors({ submit: error.message || 'Có lỗi xảy ra, vui lòng thử lại' })
     }
   }
 
@@ -129,6 +134,19 @@ const OTPVerification = () => {
           <p className="mt-2 text-center text-sm text-gray-600">
             Chúng tôi đã gửi mã OTP đến email <strong>{email}</strong>
           </p>
+          {devOTP && (
+            <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
+              <p className="text-sm font-semibold text-yellow-800 mb-2">⚠️ Dev Mode - OTP Code:</p>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-900 tracking-wider mb-2">{devOTP}</div>
+                <p className="text-xs text-yellow-700">
+                  Email chưa được cấu hình. Vui lòng sử dụng OTP ở trên để xác thực.
+                  <br />
+                  OTP cũng đã được log ra console của backend server.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

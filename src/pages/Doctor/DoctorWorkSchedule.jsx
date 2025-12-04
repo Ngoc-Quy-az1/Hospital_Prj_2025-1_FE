@@ -28,9 +28,14 @@ const DoctorWorkSchedule = () => {
         startDate: filters.startDate,
         endDate: filters.endDate
       })
-      setSchedules(response || [])
+      // API trả về {content: [], totalElements: 0, ...} hoặc array trực tiếp
+      const schedulesData = Array.isArray(response) 
+        ? response 
+        : (response?.content || response?.data || [])
+      setSchedules(Array.isArray(schedulesData) ? schedulesData : [])
     } catch (err) {
       console.error('Lỗi khi tải lịch làm việc:', err)
+      setSchedules([]) // Set empty array on error
       alert('Không thể tải lịch làm việc')
     } finally {
       setLoading(false)
@@ -180,7 +185,7 @@ const DoctorWorkSchedule = () => {
       </Card>
 
       <Card title="Lịch làm việc">
-        {schedules.length === 0 ? (
+        {!Array.isArray(schedules) || schedules.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             Chưa có lịch làm việc nào
