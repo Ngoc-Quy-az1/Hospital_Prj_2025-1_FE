@@ -56,6 +56,7 @@ import PatientBilling from './pages/Patient/PatientBilling'
 // Common Pages
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import Chat from './pages/Chat/Chat'
 
 
 // Protected Route component
@@ -353,6 +354,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<Home />} />
+      <Route path="/chat" element={<Chat />} />
       <Route 
         path="/login" 
         element={

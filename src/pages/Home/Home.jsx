@@ -15,7 +15,8 @@ import {
   Mail,
   Clock,
   Award,
-  TrendingUp
+  TrendingUp,
+  MessageCircle
 } from 'lucide-react'
 
 const Home = () => {
@@ -134,6 +135,13 @@ const Home = () => {
               >
                 Đăng nhập hệ thống
                 <ArrowRight className="w-5 h-5" />
+              </Link>
+              <Link
+                to="/chat"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-blue-500 text-white text-lg font-semibold rounded-lg hover:bg-blue-400 transition-all duration-300 transform hover:scale-105 shadow-lg"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Chat với Bot
               </Link>
               <button className="inline-flex items-center gap-2 px-8 py-4 bg-transparent text-white text-lg font-semibold rounded-lg border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-300 transform hover:scale-105">
                 <Phone className="w-5 h-5" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import Card from '../../components/Common/Card'
 import Button from '../../components/Common/Button'
 import Modal from '../../components/Common/Modal'
@@ -484,6 +485,28 @@ const PatientDashboard = () => {
           <div className="text-3xl font-bold text-purple-600">{prescriptions.length}</div>
           <div className="text-gray-600">Đơn thuốc</div>
         </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Link to="/dashboard/patient/book-appointment">
+          <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 border-2 border-green-200 hover:border-green-400">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center">
+                <Calendar className="w-8 h-8 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Đặt lịch khám mới</h3>
+                <p className="text-sm text-gray-600">Đặt lịch hẹn khám với bác sĩ chuyên khoa</p>
+              </div>
+              <div className="text-green-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </Card>
+        </Link>
       </div>
 
       {/* Recent Appointments */}

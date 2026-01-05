@@ -1,7 +1,7 @@
-// API Base Configuration
-// Default: Use production API (https://hospital-prj-2025-1-be.onrender.com)
-// Override with VITE_API_BASE_URL environment variable if needed
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://hospital-prj-2025-1-be.onrender.com'
+// Support both VITE_CHATBOT_API_BASE_URL (for Vite) and CHATBOT_API_BASE_URL (if using other bundlers)
+const CHATBOT_API_BASE_URL = import.meta.env.VITE_CHATBOT_API_BASE_URL || import.meta.env.CHATBOT_API_BASE_URL || 'https://hospital-prj-2025-1-ai.onrender.com'
 
 // API Client Class
 class ApiClient {
@@ -758,6 +758,133 @@ export const nurseAPI = {
   getRoomStatusReport: () => apiClient.get('/api/nurse/reports/room-status'),
 }
 
+// Chatbot API Client (separate base URL)
+class ChatbotApiClient {
+  constructor() {
+    this.baseURL = CHATBOT_API_BASE_URL
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`
+    
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    }
+
+    try {
+      const response = await fetch(url, config)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const rawText = await response.text()
+        try {
+          return rawText ? JSON.parse(rawText) : {}
+        } catch (parseErr) {
+          const error = new SyntaxError('Invalid JSON from server')
+          error.details = rawText.slice(0, 500)
+          throw error
+        }
+      }
+      
+      return response
+    } catch (error) {
+      console.error('Chatbot API Request Error:', error)
+      throw error
+    }
+  }
+
+  async post(endpoint, data, options = {}) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      ...options,
+    })
+  }
+
+  async get(endpoint, options = {}) {
+    return this.request(endpoint, { method: 'GET', ...options })
+  }
+}
+
+const chatbotApiClient = new ChatbotApiClient()
+
+// Chatbot APIs
+export const chatbotAPI = {
+  // Send message to chatbot
+  sendMessage: (message, patientId = null, conversationHistory = []) => {
+    return chatbotApiClient.post('/api/chat', {
+      message,
+      patient_id: patientId,
+      conversation_history: conversationHistory
+    })
+  },
+
+  // Stream response from chatbot (Server-Sent Events)
+  streamMessage: async (message, patientId = null, conversationHistory = [], onChunk) => {
+    const url = `${CHATBOT_API_BASE_URL}/api/chat/stream`
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          patient_id: patientId,
+          conversation_history: conversationHistory
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data && onChunk) {
+              onChunk(data)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Stream error:', error)
+      throw error
+    }
+  },
+
+  // Get chat history
+  getChatHistory: (patientId, limit = 50) => {
+    return chatbotApiClient.get(`/api/chat/history/${patientId}?limit=${limit}`)
+  },
+
+  // Health check
+  healthCheck: () => {
+    return chatbotApiClient.get('/health')
+  },
+}
+
 // Export API client for direct access if needed
 export { apiClient }
 export default {
@@ -769,5 +896,6 @@ export default {
   lab: labAPI,
   accountant: accountantAPI,
   nurse: nurseAPI,
+  chatbot: chatbotAPI,
 }
 

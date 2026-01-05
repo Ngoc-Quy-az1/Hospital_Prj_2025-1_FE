@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Header from './Header'
 import Sidebar from './Sidebar'
+import ChatWidget from '../Chat/ChatWidget'
 
 const Layout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -30,6 +31,9 @@ const Layout = () => {
           </div>
         </main>
       </div>
+
+      {/* Chat Widget - Floating */}
+      <ChatWidget />
     </div>
   )
 }
